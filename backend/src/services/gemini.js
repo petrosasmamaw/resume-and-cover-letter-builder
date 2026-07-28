@@ -1,0 +1,215 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const PLACEHOLDER_KEY = 'demo_gemini_key_replace_me';
+
+const MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+
+export function isPlaceholderGeminiKey() {
+  const key = process.env.GEMINI_API_KEY;
+  return !key || key === PLACEHOLDER_KEY;
+}
+
+export async function generateApplication({
+  profile,
+  jobDescription,
+  jobTitle,
+  companyName,
+  coverLetterLength,
+  outputMode = 'both',
+}) {
+  if (isPlaceholderGeminiKey()) {
+    const err = new Error(
+      'GEMINI_API_KEY is still the placeholder. Replace it in backend/.env with your real key from https://aistudio.google.com/apikey'
+    );
+    err.code = 'PLACEHOLDER_KEY';
+    throw err;
+  }
+
+  const wantResume = outputMode === 'both' || outputMode === 'resume';
+  const wantCover = outputMode === 'both' || outputMode === 'cover_letter';
+
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    systemInstruction: `You are an expert executive resume writer and career coach. You write sharp, impact-driven resume content and cover letters that sound genuinely written by a human professional, NOT an AI.
+
+STRICT WRITING RULES:
+1. NEVER use AI fluff words or buzzwords, including: "spearheaded", "testament", "tapestry", "delve", "delved", "passionate", "synergy", "pivotal", "transformative", "beacon", "leverage" (as a verb), "robust", "cutting-edge", "dynamic professional", "results-driven professional".
+2. Every resume bullet starts with a concrete action verb (e.g. "Built", "Managed", "Reduced", "Engineered", "Designed", "Automated", "Deployed").
+3. Use the XYZ format for bullets where possible: "Accomplished [X], measured by [Y], by doing [Z]" — e.g. "Cut receipt-verification time from minutes to seconds by building an OCR/QR pipeline for Tamagn Check, now used by [N] verifications/month."
+4. Vary sentence structure and length naturally — mix short punchy stats with slightly longer descriptive lines, the way a real person writing about their own work does. Do not make every bullet the same length or shape.
+5. Keep tone professional, direct, and active. No poetic or overly formal phrasing.
+6. Never invent skills, employers, dates, metrics, or achievements that are not present in the candidate profile data you're given — only rephrase and reorder what's real.`,
+  });
+
+  const tasks = [];
+  if (wantResume) {
+    tasks.push(`RESUME TASKS:
+1. Read the job description carefully and identify the concrete requirements: required skills, tools, responsibilities, and the underlying problem this role exists to solve for the company.
+2. For each major requirement, find the candidate's closest real match from the profile data (exact tech match first, closest equivalent skill/experience second) and make sure that match is visible in the resume — don't just list skills, connect them to the requirement.
+3. Select and reorder the candidate's real experience, projects, and skills to best match this specific job — leave out anything irrelevant to this particular application rather than including everything.
+4. Naturally include keywords/terms from the job description where they genuinely match the candidate's real experience (for ATS matching) — never force a keyword that doesn't apply.
+5. Write the RESUME content following all systemInstruction writing rules above.`);
+  }
+  if (wantCover) {
+    tasks.push(`COVER LETTER TASKS:
+Write the COVER LETTER as a direct pitch focused on the employer's problem, not a summary of the resume:
+- Open by naming the specific problem/need implied by the job description (not "I am writing to express my interest").
+- Explain how the candidate has already solved a similar problem, citing 1-2 specific real projects/experience from the profile with enough detail to be convincing (what was built, what tech, what outcome).
+- Explain concretely how the candidate would approach this role's day-to-day responsibilities given their real skills/experience — not generic enthusiasm, actual reasoning about fit.
+- Close with a short, confident call to action.
+- Target length: approximately ${coverLetterLength} characters. Stay within about 10% of this target.`);
+  }
+
+  const outputShape = wantResume && wantCover
+    ? `{
+  "resume": {
+    "headline": "role-specific headline",
+    "summary": "2-3 sentence tailored summary",
+    "skills": [{"category": "...", "items": ["...", "..."]}],
+    "experience": [{"role": "...", "company": "...", "location": "...", "dates": "...", "bullets": ["...", "..."]}],
+    "projects": [{"name": "...", "dates": "...", "bullets": ["...", "..."]}],
+    "education": [{"institution": "...", "degree": "...", "field": "...", "start_date": "...", "end_date": "..."}],
+    "certifications": [{"name": "...", "provider": "...", "issue_date": "..."}],
+    "languages": ["English"],
+    "achievements": ["optional real awards only if in profile"],
+    "requirement_match": [
+      {"requirement": "from job description", "candidate_match": "specific real skill/project that covers it"}
+    ]
+  },
+  "cover_letter": "full plain-text cover letter"
+}`
+    : wantResume
+      ? `{
+  "resume": {
+    "headline": "role-specific headline",
+    "summary": "2-3 sentence tailored summary",
+    "skills": [{"category": "...", "items": ["...", "..."]}],
+    "experience": [{"role": "...", "company": "...", "location": "...", "dates": "...", "bullets": ["...", "..."]}],
+    "projects": [{"name": "...", "dates": "...", "bullets": ["...", "..."]}],
+    "education": [{"institution": "...", "degree": "...", "field": "...", "start_date": "...", "end_date": "..."}],
+    "certifications": [{"name": "...", "provider": "...", "issue_date": "..."}],
+    "languages": ["English"],
+    "achievements": ["optional real awards only if in profile"],
+    "requirement_match": [
+      {"requirement": "from job description", "candidate_match": "specific real skill/project that covers it"}
+    ]
+  },
+  "cover_letter": null
+}`
+      : `{
+  "resume": null,
+  "cover_letter": "full plain-text cover letter"
+}`;
+
+  const prompt = `
+CANDIDATE PROFILE (ground truth — everything below is real, do not add anything not listed here):
+${JSON.stringify(profile)}
+
+TARGET JOB:
+Title: ${jobTitle}
+Company: ${companyName}
+Full job description: 
+${jobDescription}
+
+OUTPUT MODE: ${outputMode}
+Only produce the pieces required by this mode.
+
+${tasks.join('\n\n')}
+
+Output STRICT JSON only, no markdown, no preamble, in this shape:
+${outputShape}`;
+
+  const result = await model.generateContent(prompt);
+  return parseJsonResponse(result.response.text());
+}
+
+function parseJsonResponse(text) {
+  const cleaned = text
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+  return JSON.parse(cleaned);
+}
+
+/**
+ * Classify pasted free-form profile text into structured ResumeForge fields.
+ * Does not invent facts — only extracts what is present in the paste.
+ */
+export async function parseProfileText(rawText) {
+  if (isPlaceholderGeminiKey()) {
+    const err = new Error(
+      'GEMINI_API_KEY is still the placeholder. Replace it in backend/.env with your real key from https://aistudio.google.com/apikey'
+    );
+    err.code = 'PLACEHOLDER_KEY';
+    throw err;
+  }
+
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    systemInstruction: `You extract structured resume/profile data from messy pasted text.
+Rules:
+- Only use facts explicitly present in the text. Never invent employers, dates, skills, metrics, or URLs.
+- If a field is missing, use null (or [] for arrays).
+- Normalize dates to YYYY-MM-DD when possible; otherwise keep the original string (e.g. "2022").
+- For current roles, set end_date to null.
+- Group skills into sensible categories (Frontend, Backend, Database, Auth, AI, DevOps, Tools, Soft Skills, etc.).
+- Keep description fields as the person's real bullet points/notes, cleaned lightly for clarity but not rewritten into marketing fluff.
+- Output STRICT JSON only — no markdown, no preamble.`,
+  });
+
+  const prompt = `Parse the following pasted profile / resume / CV text into this exact JSON shape:
+
+{
+  "full_name": "string or null",
+  "title": "string or null",
+  "email": "string or null",
+  "phone": "string or null",
+  "location": "string or null",
+  "linkedin_url": "string or null",
+  "github_url": "string or null",
+  "portfolio_url": "string or null",
+  "summary": "string or null",
+  "skills": [{"category": "Frontend", "name": "React"}],
+  "experience": [{
+    "role_title": "...",
+    "company": "...",
+    "location": "... or null",
+    "start_date": "YYYY-MM-DD or year string or null",
+    "end_date": "YYYY-MM-DD or year string or null",
+    "description": "bullet notes / responsibilities"
+  }],
+  "projects": [{
+    "name": "...",
+    "url": "... or null",
+    "description": "...",
+    "tech_stack": ["React", "Node"]
+  }],
+  "education": [{
+    "institution": "...",
+    "degree": "...",
+    "field": "...",
+    "start_date": "...",
+    "end_date": "..."
+  }],
+  "certifications": [{
+    "name": "...",
+    "provider": "...",
+    "issue_date": "... or null",
+    "expiry_date": "... or null",
+    "credential_id": "... or null",
+    "credential_url": "... or null"
+  }]
+}
+
+PASTED TEXT:
+"""
+${rawText}
+"""`;
+
+  const result = await model.generateContent(prompt);
+  return parseJsonResponse(result.response.text());
+}
