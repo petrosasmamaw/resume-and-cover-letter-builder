@@ -10,6 +10,7 @@ import generationsRoutes from './routes/generations.js';
 import { isPlaceholderDb } from './db/pool.js';
 import { isPlaceholderGeminiKey } from './services/gemini.js';
 import { isPlaceholderJwt } from './middleware/auth.js';
+import { isHumanizerReady } from './services/humanizer/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -26,6 +27,8 @@ app.get('/api/health', (_req, res) => {
     gemini_ready: !isPlaceholderGeminiKey(),
     db_ready: !isPlaceholderDb,
     jwt_ready: !isPlaceholderJwt(),
+    humanizer_ready: isHumanizerReady(),
+    nlp_ready: true,
   });
 });
 

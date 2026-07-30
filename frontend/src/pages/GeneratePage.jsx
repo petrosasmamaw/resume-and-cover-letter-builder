@@ -35,13 +35,13 @@ const OUTPUT_MODES = [
 const TEMPLATES = [
   {
     id: 'color',
-    label: 'Color accent',
-    hint: 'Navy sidebar + modern layout',
+    label: 'Modern single column (ATS-Safe)',
+    hint: 'Minimal, left-aligned, parses cleanly',
   },
   {
     id: 'simple',
-    label: 'Simple classic',
-    hint: 'Centered header, clean black rules',
+    label: 'Premium ATS (single-column)',
+    hint: 'Inter + blue hierarchy, recruiter-scan optimized',
   },
 ];
 
@@ -101,6 +101,10 @@ export default function GeneratePage() {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [health, setHealth] = useState(null);
+  const [humanizing, setHumanizing] = useState(false);
+  const [humanizeStats, setHumanizeStats] = useState(null);
+  const [detecting, setDetecting] = useState(false);
+  const [detectionStats, setDetectionStats] = useState(null);
 
   const wantsResume = outputMode === 'both' || outputMode === 'resume';
   const wantsCover = outputMode === 'both' || outputMode === 'cover_letter';
@@ -140,6 +144,8 @@ export default function GeneratePage() {
     e.preventDefault();
     setError('');
     setCopied(false);
+    setHumanizeStats(null);
+    setDetectionStats(null);
 
     if (!profileId) {
       setError('Create a profile first on the Profile page.');
@@ -197,6 +203,45 @@ export default function GeneratePage() {
     await navigator.clipboard.writeText(coverLetter);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleHumanize() {
+    if (!generationId || !coverLetter) return;
+    setHumanizing(true);
+    setError('');
+    try {
+      const result = await api.humanizeCoverLetter(generationId, coverLetter);
+      setCoverLetter(result.cover_letter || '');
+      setHumanizeStats({
+        engine: result.engine,
+        warning: result.warning,
+        improved: result.improved,
+        metrics: result.metrics,
+        before: result.before,
+        after: result.after,
+      });
+      if (result.after?.detection) {
+        setDetectionStats(result.after.detection);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setHumanizing(false);
+    }
+  }
+
+  async function handleDetect() {
+    if (!generationId || !coverLetter) return;
+    setDetecting(true);
+    setError('');
+    try {
+      const result = await api.detectCoverLetter(generationId, coverLetter);
+      setDetectionStats(result);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDetecting(false);
+    }
   }
 
   const targetLength = customLength
@@ -452,20 +497,80 @@ export default function GeneratePage() {
             <section className="space-y-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <h2 className="text-lg font-semibold text-navy">Cover letter</h2>
-                <button
-                  type="button"
-                  onClick={copyCoverLetter}
-                  className="rounded border border-navy px-4 py-2 text-sm text-navy hover:bg-navy hover:text-white"
-                >
-                  {copied ? 'Copied!' : 'Copy to clipboard'}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDetect}
+                    disabled={detecting || !generationId}
+                    className="rounded border border-navy px-4 py-2 text-sm font-medium text-navy hover:bg-navy/5 disabled:opacity-60"
+                  >
+                    {detecting ? 'Analyzing…' : 'Check AI'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleHumanize}
+                    disabled={humanizing || !generationId}
+                    className="rounded bg-navy px-4 py-2 text-sm font-medium text-white hover:bg-navy-light disabled:opacity-60"
+                  >
+                    {humanizing ? 'Humanizing…' : 'Humanize'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={copyCoverLetter}
+                    className="rounded border border-navy px-4 py-2 text-sm text-navy hover:bg-navy hover:text-white"
+                  >
+                    {copied ? 'Copied!' : 'Copy to clipboard'}
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-ink-muted">
                 {charCount} characters
                 {wantsCover && targetLength
                   ? ` · target ${targetLength} (${charDelta >= 0 ? '+' : ''}${charDelta})`
                   : ''}
+                {' · '}Humanize rewrites the cover letter using NLP + ML (resume stays unchanged).
               </p>
+              {detectionStats && (
+                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 space-y-1">
+                  <p className="font-medium">
+                    AI detection:{' '}
+                    <span className="capitalize">{detectionStats.prediction}</span>
+                    {' · '}
+                    {Math.round((detectionStats.confidence || 0) * 100)}% confidence
+                    {' · '}
+                    AI score {Math.round((detectionStats.aiProbability || 0) * 100)}%
+                  </p>
+                  <p>
+                    Readability {detectionStats.readability?.fleschReadingEase ?? '—'}
+                    {' · '}
+                    Burstiness σ {detectionStats.burstiness?.stdDev ?? '—'}
+                    {' · '}
+                    Avg sentence {detectionStats.readability?.avgSentenceLength ?? '—'} words
+                  </p>
+                </div>
+              )}
+              {humanizeStats && (
+                <div className="rounded border border-teal-200 bg-teal-50 px-3 py-2 text-xs text-teal-900 space-y-1">
+                  <p>
+                    Cover letter humanized via NLP pipeline
+                    {humanizeStats.improved ? ' · AI score reduced' : ''}
+                  </p>
+                  {humanizeStats.metrics && (
+                    <p>
+                      Similarity {Math.round((humanizeStats.metrics.semanticSimilarity || 0) * 100)}%
+                      {' · '}
+                      Readability {humanizeStats.metrics.readability?.fleschReadingEase ?? '—'}
+                      {' · '}
+                      Burstiness σ {humanizeStats.metrics.burstiness?.stdDev ?? '—'}
+                      {' · '}
+                      Lexical diversity {humanizeStats.metrics.vocabulary?.lexicalDiversity ?? '—'}
+                    </p>
+                  )}
+                  {humanizeStats.warning && (
+                    <p className="text-amber-800">{humanizeStats.warning}</p>
+                  )}
+                </div>
+              )}
               <textarea
                 readOnly
                 value={coverLetter}

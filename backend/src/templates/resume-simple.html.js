@@ -12,62 +12,75 @@ function renderList(items, mapper) {
   return items.map(mapper).join('');
 }
 
-function flattenSkills(skills) {
+function normalizeSkillGroups(skills) {
   if (!skills?.length) return [];
-  const items = [];
-  for (const group of skills) {
-    if (Array.isArray(group.items)) {
-      for (const item of group.items) items.push(String(item));
-    } else if (group.name) {
-      items.push(String(group.name));
-    }
+  if (skills.some((s) => Array.isArray(s.items))) {
+    return skills
+      .map((g) => ({
+        category: g.category || 'Skills',
+        items: (g.items || []).map(String).filter(Boolean),
+      }))
+      .filter((g) => g.items.length);
   }
-  return items;
+
+  const map = new Map();
+  for (const s of skills) {
+    const cat = s.category || 'Skills';
+    const name = s.name || s.item;
+    if (!name) continue;
+    if (!map.has(cat)) map.set(cat, []);
+    map.get(cat).push(String(name));
+  }
+  return [...map.entries()].map(([category, items]) => ({ category, items }));
 }
 
 /**
- * Classic simple resume (Emma Williams style):
- * centered header, black rules, single-column sections.
+ * Premium ATS-safe single-column resume.
+ * Inter typography + restrained blue hierarchy.
  */
 export function renderSimpleResumeHtml(resume, profile = {}) {
   const name = escapeHtml(profile.full_name || resume.name || 'Candidate');
   const headline = escapeHtml(resume.headline || profile.title || '');
+
   const contact = [
-    profile.location,
     profile.email,
     profile.phone,
-    profile.linkedin_url,
-    profile.github_url,
     profile.portfolio_url,
+    profile.github_url,
+    profile.linkedin_url,
+    profile.location,
   ]
     .filter(Boolean)
     .map(escapeHtml)
     .join(' | ');
 
-  const skillItems = flattenSkills(resume.skills);
-  const mid = Math.ceil(skillItems.length / 2) || 0;
-  const leftSkills = skillItems.slice(0, mid);
-  const rightSkills = skillItems.slice(mid);
+  const skillGroups = normalizeSkillGroups(resume.skills);
+
+  const skillsHtml = renderList(skillGroups, (g) => {
+    const items = g.items.map(escapeHtml).join(', ');
+    return `
+      <div class="skill-line">
+        <span class="skill-cat">${escapeHtml(g.category)}:</span>
+        <span class="skill-items">${items}</span>
+      </div>`;
+  });
 
   const experienceHtml = renderList(resume.experience, (exp) => {
     const bullets = (exp.bullets || [])
       .map((b) => `<li>${escapeHtml(b)}</li>`)
       .join('');
-    const titleLine = [
-      exp.role || exp.role_title,
-      exp.company,
-      exp.location,
-    ]
-      .filter(Boolean)
-      .map(escapeHtml)
-      .join(' – ');
+    const role = exp.role || exp.role_title || '';
+    const company = exp.company || '';
+    const location = exp.location || '';
+    const dates = exp.dates || '';
     return `
-      <div class="job">
-        <div class="job-head">
-          <div class="job-title">${titleLine}</div>
-          <div class="job-dates">${escapeHtml(exp.dates || '')}</div>
+      <div class="block">
+        <div class="row">
+          <div class="block-title">${escapeHtml(role)}</div>
+          ${dates ? `<div class="block-date">${escapeHtml(dates)}</div>` : ''}
         </div>
-        <ul class="bullets">${bullets}</ul>
+        <div class="block-sub">${escapeHtml([company, location].filter(Boolean).join(' · '))}</div>
+        ${bullets ? `<ul class="bullets">${bullets}</ul>` : ''}
       </div>`;
   });
 
@@ -75,217 +88,144 @@ export function renderSimpleResumeHtml(resume, profile = {}) {
     const bullets = (proj.bullets || [])
       .map((b) => `<li>${escapeHtml(b)}</li>`)
       .join('');
-    const body =
-      bullets ||
-      (proj.description
-        ? `<p class="proj-desc">${escapeHtml(proj.description)}</p>`
-        : '');
+    const desc = proj.description ? `<p class="proj-desc">${escapeHtml(proj.description)}</p>` : '';
+    const tech = Array.isArray(proj.tech_stack) && proj.tech_stack.length
+      ? `<p class="proj-tech"><strong>Technologies:</strong> ${escapeHtml(proj.tech_stack.join(', '))}</p>`
+      : '';
+    const links = [proj.url, proj.github, proj.live_demo].filter(Boolean);
+    const linksHtml = links.length
+      ? `<p class="proj-tech"><strong>Links:</strong> ${escapeHtml(links.join(' | '))}</p>`
+      : '';
     return `
-      <div class="job">
-        <div class="job-head">
-          <div class="job-title">${escapeHtml(proj.name || '')}</div>
-          <div class="job-dates">${escapeHtml(proj.dates || '')}</div>
+      <div class="block">
+        <div class="row">
+          <div class="block-title">${escapeHtml(proj.name || '')}</div>
+          ${proj.dates ? `<div class="block-date">${escapeHtml(proj.dates)}</div>` : ''}
         </div>
-        ${body}
+        ${desc}
+        ${tech}
+        ${linksHtml}
+        ${bullets ? `<ul class="bullets">${bullets}</ul>` : ''}
       </div>`;
   });
 
   const educationHtml = renderList(resume.education, (edu) => {
     if (typeof edu === 'string') {
-      return `<div class="edu-row"><div>${escapeHtml(edu)}</div></div>`;
+      return `<div class="block"><div class="block-title">${escapeHtml(edu)}</div></div>`;
     }
-    const line1 = [edu.degree, edu.field].filter(Boolean).join(' in ');
-    const line2 = edu.institution || edu.school || '';
+    const degree = [edu.degree, edu.field].filter(Boolean).join(' in ');
+    const school = edu.institution || edu.school || '';
     const dates = [edu.start_date || edu.start, edu.end_date || edu.end]
       .filter(Boolean)
       .join(' – ');
     return `
-      <div class="edu-row">
-        <div>
-          <div class="edu-degree">${escapeHtml(line1)}</div>
-          <div class="edu-school">${escapeHtml(line2)}</div>
+      <div class="block">
+        <div class="row">
+          <div class="block-title">${escapeHtml(degree)}</div>
+          ${dates ? `<div class="block-date">${escapeHtml(dates)}</div>` : ''}
         </div>
-        <div class="job-dates">${escapeHtml(dates || edu.dates || '')}</div>
+        <div class="block-sub">${escapeHtml(school)}</div>
       </div>`;
   });
 
-  const certs = (resume.certifications || [])
-    .map((c) => {
-      if (typeof c === 'string') return escapeHtml(c);
-      return escapeHtml(
-        [c.name, c.provider, c.issue_date || c.date]
-          .filter(Boolean)
-          .join(' – ')
-      );
-    })
-    .filter(Boolean);
+  const certsHtml = renderList(resume.certifications, (cert) => {
+    if (typeof cert === 'string') {
+      return `<li>${escapeHtml(cert)}</li>`;
+    }
+    const val = [cert.name, cert.provider, cert.issue_date || cert.date]
+      .filter(Boolean)
+      .join(' · ');
+    return `<li>${escapeHtml(val)}</li>`;
+  });
 
-  const languages = Array.isArray(resume.languages)
-    ? resume.languages.map(escapeHtml)
-    : [];
+  const awards = Array.isArray(resume.achievements) ? resume.achievements : [];
+  const awardsHtml = awards.map((a) => `<li>${escapeHtml(a)}</li>`).join('');
 
-  const achievements = Array.isArray(resume.achievements)
-    ? resume.achievements.map(escapeHtml)
-    : [];
-
-  const skillsCols =
-    skillItems.length === 0
-      ? ''
-      : `
-    <div class="skills-grid">
-      <ul class="bullets">${leftSkills.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
-      <ul class="bullets">${rightSkills.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
-    </div>`;
-
-  const additional =
-    certs.length || languages.length || achievements.length
-      ? `
-    <section class="section">
-      <h2 class="section-title">Additional Details</h2>
-      <div class="extra-grid">
-        <div>
-          ${
-            certs.length
-              ? `<div class="extra-label">Certifications:</div><ul class="bullets tight">${certs
-                  .map((c) => `<li>${c}</li>`)
-                  .join('')}</ul>`
-              : ''
-          }
-          ${
-            languages.length
-              ? `<div class="extra-label" style="margin-top:8px">Languages:</div><ul class="bullets tight"><li>${languages.join(
-                  ', '
-                )}</li></ul>`
-              : ''
-          }
-        </div>
-        <div>
-          ${
-            achievements.length
-              ? `<div class="extra-label">Achievements</div><ul class="bullets tight">${achievements
-                  .map((a) => `<li>${a}</li>`)
-                  .join('')}</ul>`
-              : ''
-          }
-        </div>
-      </div>
-    </section>`
-      : certs.length
-        ? ''
-        : '';
-
-  // If only certs in resume.certifications and no achievements block built above with empty achievements
-  const certsOnlyFallback =
-    !additional && certs.length
-      ? `
-    <section class="section">
-      <h2 class="section-title">Additional Details</h2>
-      <div class="extra-label">Certifications:</div>
-      <ul class="bullets tight">${certs.map((c) => `<li>${c}</li>`).join('')}</ul>
-    </section>`
-      : '';
+  const languages = Array.isArray(resume.languages) ? resume.languages : [];
+  const languagesHtml = languages.length
+    ? `<p class="plain-line">${escapeHtml(languages.join(', '))}</p>`
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <style>
-    @page { size: Letter; margin: 0; }
+    @page { size: A4; margin: 0; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-      width: 8.5in;
-      height: 11in;
-      font-family: "Times New Roman", Times, Georgia, serif;
-      font-size: 10.5px;
-      line-height: 1.35;
-      color: #111;
+      width: 8.27in;
+      height: 11.69in;
+      font-family: Inter, "Source Sans 3", "IBM Plex Sans", Calibri, Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.45;
+      color: #111827;
+      background: #FFFFFF;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     .page {
-      width: 8.5in;
-      min-height: 11in;
-      max-height: 11in;
+      width: 8.27in;
+      min-height: 11.69in;
+      max-height: 11.69in;
+      padding: 0.76in;
       overflow: hidden;
-      padding: 0.55in 0.65in;
-      background: #fff;
     }
-    .header { text-align: center; margin-bottom: 10px; }
+    .header { margin-bottom: 12px; }
     .name {
-      font-size: 22px;
+      font-size: 32px;
       font-weight: 700;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      line-height: 1.15;
+      color: #111827;
+      letter-spacing: 0.01em;
+      line-height: 1.08;
     }
     .headline {
-      font-size: 11px;
+      margin-top: 3px;
+      font-size: 14px;
       font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      margin-top: 4px;
-      color: #222;
+      color: #2563EB;
     }
     .contact {
-      font-size: 9px;
       margin-top: 6px;
-      color: #333;
+      font-size: 9pt;
+      color: #6B7280;
+      word-break: break-word;
     }
-    .rule {
-      border: none;
-      border-top: 1.5px solid #111;
-      margin: 10px 0 8px;
-    }
-    .section { margin-bottom: 10px; }
+    .section { margin-top: 18px; }
     .section-title {
-      font-size: 11px;
+      font-size: 15px;
       font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      border-bottom: 1px solid #111;
-      padding-bottom: 2px;
-      margin-bottom: 6px;
+      color: #2563EB;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #E5E7EB;
+      margin-bottom: 8px;
+      letter-spacing: 0.01em;
     }
-    .summary { font-size: 10px; text-align: justify; }
-    .job { margin-bottom: 8px; }
-    .job-head {
+    .summary { color: #111827; }
+    .skill-line { margin-bottom: 5px; }
+    .skill-cat { font-weight: 700; color: #111827; }
+    .skill-items { color: #374151; margin-left: 4px; }
+    .block { margin-bottom: 10px; }
+    .row {
       display: flex;
       justify-content: space-between;
       gap: 12px;
       align-items: baseline;
     }
-    .job-title { font-weight: 700; font-size: 10.5px; }
-    .job-dates {
-      font-size: 9.5px;
-      white-space: nowrap;
-      color: #222;
+    .block-title { font-size: 11pt; font-weight: 700; color: #111827; }
+    .block-date { font-size: 9pt; color: #6B7280; white-space: nowrap; }
+    .block-sub {
+      font-size: 10pt;
+      color: #2563EB;
+      font-weight: 600;
+      margin-top: 1px;
     }
-    .bullets {
-      padding-left: 16px;
-      margin-top: 2px;
-    }
-    .bullets li { margin-bottom: 1px; }
-    .bullets.tight li { margin-bottom: 0; }
-    .proj-desc { font-size: 10px; margin-top: 2px; }
-    .skills-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px 24px;
-    }
-    .edu-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 4px;
-    }
-    .edu-degree { font-weight: 700; }
-    .edu-school { font-size: 10px; }
-    .extra-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px 24px;
-    }
-    .extra-label { font-weight: 700; font-size: 10px; margin-bottom: 2px; }
+    .bullets { margin-top: 4px; padding-left: 16px; }
+    .bullets li { margin-bottom: 2px; color: #111827; }
+    .plain-list { padding-left: 16px; }
+    .plain-list li { margin-bottom: 2px; }
+    .plain-line { color: #111827; }
+    .proj-desc, .proj-tech { margin-top: 2px; font-size: 10pt; color: #374151; }
   </style>
 </head>
 <body>
@@ -295,55 +235,17 @@ export function renderSimpleResumeHtml(resume, profile = {}) {
       ${headline ? `<div class="headline">${headline}</div>` : ''}
       ${contact ? `<div class="contact">${contact}</div>` : ''}
     </header>
-    <hr class="rule" />
 
-    ${
-      resume.summary
-        ? `<section class="section">
-      <h2 class="section-title">Profile</h2>
-      <p class="summary">${escapeHtml(resume.summary)}</p>
-    </section>`
-        : ''
-    }
-
-    ${
-      experienceHtml
-        ? `<section class="section">
-      <h2 class="section-title">Work Experience</h2>
-      ${experienceHtml}
-    </section>`
-        : ''
-    }
-
-    ${
-      projectsHtml
-        ? `<section class="section">
-      <h2 class="section-title">Project Experience</h2>
-      ${projectsHtml}
-    </section>`
-        : ''
-    }
-
-    ${
-      skillItems.length
-        ? `<section class="section">
-      <h2 class="section-title">Key Skills</h2>
-      ${skillsCols}
-    </section>`
-        : ''
-    }
-
-    ${
-      educationHtml
-        ? `<section class="section">
-      <h2 class="section-title">Education</h2>
-      ${educationHtml}
-    </section>`
-        : ''
-    }
-
-    ${additional || certsOnlyFallback}
+    ${resume.summary ? `<section class="section"><div class="section-title">Summary</div><p class="summary">${escapeHtml(resume.summary)}</p></section>` : ''}
+    ${skillsHtml ? `<section class="section"><div class="section-title">Skills</div>${skillsHtml}</section>` : ''}
+    ${experienceHtml ? `<section class="section"><div class="section-title">Experience</div>${experienceHtml}</section>` : ''}
+    ${projectsHtml ? `<section class="section"><div class="section-title">Projects</div>${projectsHtml}</section>` : ''}
+    ${educationHtml ? `<section class="section"><div class="section-title">Education</div>${educationHtml}</section>` : ''}
+    ${certsHtml ? `<section class="section"><div class="section-title">Certifications</div><ul class="plain-list">${certsHtml}</ul></section>` : ''}
+    ${awardsHtml ? `<section class="section"><div class="section-title">Awards</div><ul class="plain-list">${awardsHtml}</ul></section>` : ''}
+    ${languagesHtml ? `<section class="section"><div class="section-title">Languages</div>${languagesHtml}</section>` : ''}
   </div>
 </body>
 </html>`;
 }
+

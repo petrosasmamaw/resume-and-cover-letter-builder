@@ -145,6 +145,20 @@ export const api = {
     }
     return res.blob();
   },
+  humanizeCoverLetter: (generationId, coverLetter) =>
+    request(`/api/generate/${generationId}/humanize`, {
+      method: 'POST',
+      body: JSON.stringify(
+        coverLetter ? { cover_letter: coverLetter } : {}
+      ),
+    }),
+  detectCoverLetter: (generationId, coverLetter) =>
+    request(`/api/generate/${generationId}/detect`, {
+      method: 'POST',
+      body: JSON.stringify(
+        coverLetter ? { cover_letter: coverLetter } : {}
+      ),
+    }),
   listGenerations: (profileId) =>
     request(`/api/generations/${profileId}`),
   getGeneration: (id) => request(`/api/generations/item/${id}`),

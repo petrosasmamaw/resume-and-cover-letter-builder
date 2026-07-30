@@ -3,11 +3,34 @@ import { query } from '../db/pool.js';
 import { getFullProfile } from './profile.js';
 import { generateApplication, isPlaceholderGeminiKey } from '../services/gemini.js';
 import { generateResumePdf } from '../services/pdf.js';
+import { humanizeCoverLetter } from '../services/humanizer/index.js';
+import { detectText } from '../services/detector/predict.js';
 import { generateLimiter } from '../middleware/rateLimit.js';
 import { requireAuth } from '../middleware/auth.js';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
 router.use(requireAuth);
+
+const humanizeLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Rate limit exceeded. Maximum 30 humanize calls per hour.',
+  },
+});
+
+const detectLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Rate limit exceeded. Maximum 60 detect calls per hour.',
+  },
+});
 
 const MAX_JOB_DESCRIPTION = 20000;
 const OUTPUT_MODES = new Set(['both', 'resume', 'cover_letter']);
@@ -123,6 +146,105 @@ router.post('/', generateLimiter, async (req, res) => {
     res.status(500).json({
       error: err.message || 'Generation failed',
     });
+  }
+});
+
+router.post('/:generation_id/humanize', humanizeLimiter, async (req, res) => {
+  try {
+    if (isPlaceholderGeminiKey()) {
+      return res.status(400).json({
+        error:
+          'GEMINI_API_KEY is still the placeholder. Replace it in backend/.env first.',
+        code: 'PLACEHOLDER_KEY',
+      });
+    }
+
+    const genRes = await query(
+      `SELECT g.* FROM generations g
+       WHERE g.id = $1 AND (g.user_id = $2 OR g.profile_id IN (
+         SELECT id FROM profiles WHERE user_id = $2
+       ))`,
+      [req.params.generation_id, req.user.id]
+    );
+    if (!genRes.rows.length) {
+      return res.status(404).json({ error: 'Generation not found' });
+    }
+
+    const generation = genRes.rows[0];
+    const source =
+      (req.body?.cover_letter && String(req.body.cover_letter).trim()) ||
+      generation.generated_cover_letter;
+
+    if (!source?.trim()) {
+      return res.status(400).json({
+        error:
+          'No cover letter to humanize. Generate a cover letter first (resume-only generations cannot be humanized).',
+      });
+    }
+
+    const result = await humanizeCoverLetter(source, {
+      jobTitle: generation.job_title,
+      companyName: generation.company_name,
+    });
+
+    await query(
+      `UPDATE generations SET generated_cover_letter = $1 WHERE id = $2`,
+      [result.cover_letter, generation.id]
+    );
+
+    res.json({
+      cover_letter: result.cover_letter,
+      generation_id: generation.id,
+      before: result.before,
+      after: result.after,
+      metrics: result.metrics,
+      passes: result.passes,
+      improved: result.improved,
+      engine: result.engine,
+      warning: result.warning,
+    });
+  } catch (err) {
+    console.error('Humanize error:', err);
+    if (err.code === 'PLACEHOLDER_KEY' || err.code === 'EMPTY') {
+      return res.status(400).json({ error: err.message, code: err.code });
+    }
+    res.status(500).json({ error: err.message || 'Humanize failed' });
+  }
+});
+
+router.post('/:generation_id/detect', detectLimiter, async (req, res) => {
+  try {
+    const genRes = await query(
+      `SELECT g.* FROM generations g
+       WHERE g.id = $1 AND (g.user_id = $2 OR g.profile_id IN (
+         SELECT id FROM profiles WHERE user_id = $2
+       ))`,
+      [req.params.generation_id, req.user.id]
+    );
+    if (!genRes.rows.length) {
+      return res.status(404).json({ error: 'Generation not found' });
+    }
+
+    const generation = genRes.rows[0];
+    const source =
+      (req.body?.cover_letter && String(req.body.cover_letter).trim()) ||
+      generation.generated_cover_letter;
+
+    if (!source?.trim()) {
+      return res.status(400).json({
+        error:
+          'No cover letter to analyze. Generate a cover letter first.',
+      });
+    }
+
+    const result = detectText(source);
+    res.json({
+      generation_id: generation.id,
+      ...result,
+    });
+  } catch (err) {
+    console.error('Detect error:', err);
+    res.status(500).json({ error: err.message || 'Detection failed' });
   }
 });
 

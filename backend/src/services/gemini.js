@@ -2,7 +2,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const PLACEHOLDER_KEY = 'demo_gemini_key_replace_me';
 
-const MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-pro-preview';
+const FALLBACK_MODEL = 'gemini-flash-latest';
 
 export function isPlaceholderGeminiKey() {
   const key = process.env.GEMINI_API_KEY;
@@ -29,10 +30,7 @@ export async function generateApplication({
   const wantCover = outputMode === 'both' || outputMode === 'cover_letter';
 
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-  const model = genAI.getGenerativeModel({
-    model: MODEL,
-    systemInstruction: `You are an expert executive resume writer and career coach. You write sharp, impact-driven resume content and cover letters that sound genuinely written by a human professional, NOT an AI.
+  const systemInstruction = `You are an expert executive resume writer and career coach. You write sharp, impact-driven resume content and cover letters that sound genuinely written by a human professional, NOT an AI.
 
 STRICT WRITING RULES:
 1. NEVER use AI fluff words or buzzwords, including: "spearheaded", "testament", "tapestry", "delve", "delved", "passionate", "synergy", "pivotal", "transformative", "beacon", "leverage" (as a verb), "robust", "cutting-edge", "dynamic professional", "results-driven professional".
@@ -40,8 +38,7 @@ STRICT WRITING RULES:
 3. Use the XYZ format for bullets where possible: "Accomplished [X], measured by [Y], by doing [Z]" — e.g. "Cut receipt-verification time from minutes to seconds by building an OCR/QR pipeline for Tamagn Check, now used by [N] verifications/month."
 4. Vary sentence structure and length naturally — mix short punchy stats with slightly longer descriptive lines, the way a real person writing about their own work does. Do not make every bullet the same length or shape.
 5. Keep tone professional, direct, and active. No poetic or overly formal phrasing.
-6. Never invent skills, employers, dates, metrics, or achievements that are not present in the candidate profile data you're given — only rephrase and reorder what's real.`,
-  });
+6. Never invent skills, employers, dates, metrics, or achievements that are not present in the candidate profile data you're given — only rephrase and reorder what's real.`;
 
   const tasks = [];
   if (wantResume) {
@@ -121,8 +118,11 @@ ${tasks.join('\n\n')}
 Output STRICT JSON only, no markdown, no preamble, in this shape:
 ${outputShape}`;
 
-  const result = await model.generateContent(prompt);
-  return parseJsonResponse(result.response.text());
+  const text = await generateWithModelFallback(genAI, {
+    systemInstruction,
+    prompt,
+  });
+  return parseJsonResponse(text);
 }
 
 function parseJsonResponse(text) {
@@ -148,9 +148,7 @@ export async function parseProfileText(rawText) {
   }
 
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({
-    model: MODEL,
-    systemInstruction: `You extract structured resume/profile data from messy pasted text.
+  const systemInstruction = `You extract structured resume/profile data from messy pasted text.
 Rules:
 - Only use facts explicitly present in the text. Never invent employers, dates, skills, metrics, or URLs.
 - If a field is missing, use null (or [] for arrays).
@@ -158,8 +156,7 @@ Rules:
 - For current roles, set end_date to null.
 - Group skills into sensible categories (Frontend, Backend, Database, Auth, AI, DevOps, Tools, Soft Skills, etc.).
 - Keep description fields as the person's real bullet points/notes, cleaned lightly for clarity but not rewritten into marketing fluff.
-- Output STRICT JSON only — no markdown, no preamble.`,
-  });
+- Output STRICT JSON only — no markdown, no preamble.`;
 
   const prompt = `Parse the following pasted profile / resume / CV text into this exact JSON shape:
 
@@ -210,6 +207,40 @@ PASTED TEXT:
 ${rawText}
 """`;
 
-  const result = await model.generateContent(prompt);
-  return parseJsonResponse(result.response.text());
+  const text = await generateWithModelFallback(genAI, {
+    systemInstruction,
+    prompt,
+  });
+  return parseJsonResponse(text);
+}
+
+function shouldFallbackModel(error) {
+  const msg = String(error?.message || '');
+  return (
+    msg.includes('[429') ||
+    msg.toLowerCase().includes('quota exceeded') ||
+    msg.toLowerCase().includes('not found') ||
+    msg.toLowerCase().includes('no longer available')
+  );
+}
+
+async function generateWithModelFallback(genAI, { systemInstruction, prompt }) {
+  const primary = genAI.getGenerativeModel({
+    model: PRIMARY_MODEL,
+    systemInstruction,
+  });
+  try {
+    const result = await primary.generateContent(prompt);
+    return result.response.text();
+  } catch (error) {
+    if (!shouldFallbackModel(error) || PRIMARY_MODEL === FALLBACK_MODEL) {
+      throw error;
+    }
+    const fallback = genAI.getGenerativeModel({
+      model: FALLBACK_MODEL,
+      systemInstruction,
+    });
+    const result = await fallback.generateContent(prompt);
+    return result.response.text();
+  }
 }
