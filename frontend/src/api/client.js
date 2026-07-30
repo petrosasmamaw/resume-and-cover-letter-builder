@@ -1,6 +1,13 @@
 const TOKEN_KEY = 'resumeforge_token';
 const PROFILE_KEY = 'resumeforge_profile_id';
 const USER_KEY = 'resumeforge_user';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+
+function buildApiUrl(path) {
+  if (!path) return API_BASE_URL;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${API_BASE_URL}${path}`;
+}
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -42,7 +49,7 @@ async function request(path, options = {}) {
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(path, {
+  const res = await fetch(buildApiUrl(path), {
     ...options,
     headers,
   });
@@ -131,7 +138,7 @@ export const api = {
     const headers = { 'Content-Type': 'application/json' };
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
-    const res = await fetch(`/api/generate/${generationId}/pdf`, {
+    const res = await fetch(buildApiUrl(`/api/generate/${generationId}/pdf`), {
       method: 'POST',
       headers,
       body: JSON.stringify(
