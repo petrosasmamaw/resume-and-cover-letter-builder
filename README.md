@@ -22,6 +22,7 @@ It features an **in-house NLP Humanizer engine** to refine cover letters, an **A
 
 ### **Frontend**
 - **Framework**: React 18 (Vite)
+- **State Management**: Redux Toolkit (`@reduxjs/toolkit` + `react-redux`) for smart client-side caching & instant page switching
 - **Styling**: Tailwind CSS v4 + Custom HSL Design Tokens
 - **Typography**: *Plus Jakarta Sans*, *Fraunces*, and *Inter* via Google Fonts
 - **Routing**: React Router v6

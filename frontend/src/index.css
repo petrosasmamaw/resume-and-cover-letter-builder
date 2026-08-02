@@ -501,6 +501,26 @@ textarea.rf-input {
 .rf-stagger > *:nth-child(6) { animation-delay: 0.17s; }
 
 /* ─────────────────────────────────────────────────────────
+   SKELETON SHIMMER ANIMATION
+   ───────────────────────────────────────────────────────── */
+@keyframes rf-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.rf-skeleton {
+  background: linear-gradient(
+    90deg,
+    #e2e8f0 25%,
+    #f1f5f9 37%,
+    #e2e8f0 63%
+  );
+  background-size: 400% 100%;
+  animation: rf-shimmer 1.4s ease infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ─────────────────────────────────────────────────────────
    MOBILE SAFE AREA
    ───────────────────────────────────────────────────────── */
 @supports (padding: env(safe-area-inset-bottom)) {
@@ -508,3 +528,4 @@ textarea.rf-input {
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+

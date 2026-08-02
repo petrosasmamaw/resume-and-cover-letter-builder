@@ -14,7 +14,7 @@ import {
   ChoiceCards,
   EmptyState,
   Field,
-  LoadingState,
+  GenerateSkeleton,
   PageHeader,
 } from '../components/ui.jsx';
 
@@ -162,11 +162,19 @@ function HumanizeCard({ stats }) {
   );
 }
 
-/* ── Main page ─────────────────────────────────────────── */
+import { useDispatch, useSelector } from 'react-redux';
+import { addGenerationToHistory } from '../store/historySlice.js';
+import { fetchProfile } from '../store/profileSlice.js';
+
 export default function GeneratePage() {
+  const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
   const { profileId: authProfileId } = useAuth();
   const profileId = authProfileId || getStoredProfileId();
+
+  const profileState = useSelector((state) => state.profile);
+  const { core: profileCore, skills, experience, projects, education, certifications } = profileState;
+  const profile = { ...profileCore, skills, experience, projects, education, certifications };
 
   const [jobTitle, setJobTitle] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -176,7 +184,6 @@ export default function GeneratePage() {
   const [outputMode, setOutputMode] = useState('both');
   const [resumeTemplate, setResumeTemplate] = useState('color');
 
-  const [profile, setProfile] = useState(null);
   const [resume, setResume] = useState(null);
   const [coverLetter, setCoverLetter] = useState('');
   const [generationId, setGenerationId] = useState(null);
@@ -198,9 +205,10 @@ export default function GeneratePage() {
   }, []);
 
   useEffect(() => {
-    if (!profileId) return;
-    api.getProfile(profileId).then(setProfile).catch(() => setProfile(null));
-  }, [profileId]);
+    if (profileId) {
+      dispatch(fetchProfile(profileId));
+    }
+  }, [dispatch, profileId]);
 
   useEffect(() => {
     const gid = searchParams.get('generation');
@@ -254,6 +262,21 @@ export default function GeneratePage() {
       setGenerationId(result.generation_id);
       if (result.output_mode) setOutputMode(result.output_mode);
       if (result.resume_template) setResumeTemplate(result.resume_template);
+
+      // Add to Redux History Store automatically
+      dispatch(
+        addGenerationToHistory({
+          id: result.generation_id,
+          job_title: jobTitle,
+          company_name: companyName,
+          job_description: jobDescription,
+          generated_resume_json: result.resume,
+          generated_cover_letter: result.cover_letter,
+          output_mode: result.output_mode || outputMode,
+          resume_template: result.resume_template || resumeTemplate,
+          created_at: new Date().toISOString(),
+        })
+      );
     } catch (err) {
       setError(err.message);
       setResume(null);
@@ -529,9 +552,7 @@ export default function GeneratePage() {
       </Card>
 
       {/* ── Loading state ───────────────────────────────────── */}
-      {loading && (
-        <LoadingState label="Calling Gemini and crafting your tailored materials…" />
-      )}
+      {loading && <GenerateSkeleton />}
 
       {/* ── Results ─────────────────────────────────────────── */}
       {hasResults && (

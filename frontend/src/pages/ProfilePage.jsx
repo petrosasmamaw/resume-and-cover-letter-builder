@@ -1,8 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import {
-  api,
-  setStoredProfileId,
-} from '../api/client.js';
+import { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useAuth } from '../auth/AuthContext.jsx';
 import {
   Alert,
@@ -10,9 +7,24 @@ import {
   Card,
   CardTitle,
   Field,
-  LoadingState,
   PageHeader,
+  ProfileSkeleton,
 } from '../components/ui.jsx';
+import {
+  addCertification,
+  addEducation,
+  addExperience,
+  addProject,
+  addSkill,
+  deleteCertification,
+  deleteEducation,
+  deleteExperience,
+  deleteProject,
+  deleteSkill,
+  fetchProfile,
+  parseProfileAi,
+  saveCoreProfile,
+} from '../store/profileSlice.js';
 
 const emptyCore = {
   full_name: '',
@@ -90,17 +102,25 @@ function ListRow({ children, onRemove }) {
 
 /* ── Main component ───────────────────────────────────── */
 export default function ProfilePage() {
+  const dispatch = useDispatch();
   const { profileId: authProfileId, setProfileId: setAuthProfileId } = useAuth();
-  const [profileId, setProfileId] = useState(authProfileId);
+  const profileState = useSelector((state) => state.profile);
+
+  const {
+    profileId,
+    core: reduxCore,
+    skills,
+    experience,
+    projects,
+    education,
+    certifications,
+    status: reduxStatus,
+    error: reduxError,
+  } = profileState;
+
   const [core, setCore] = useState(emptyCore);
-  const [skills, setSkills] = useState([]);
-  const [experience, setExperience] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [education, setEducation] = useState([]);
-  const [certifications, setCertifications] = useState([]);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
   const [pasteText, setPasteText] = useState('');
   const [aiParsing, setAiParsing] = useState(false);
 
@@ -135,156 +155,138 @@ export default function ProfilePage() {
     credential_url: '',
   });
 
-  const loadProfile = useCallback(async (id) => {
-    const data = await api.getProfile(id);
-    setCore({
-      full_name: data.full_name || '',
-      title: data.title || '',
-      email: data.email || '',
-      phone: data.phone || '',
-      location: data.location || '',
-      linkedin_url: data.linkedin_url || '',
-      github_url: data.github_url || '',
-      portfolio_url: data.portfolio_url || '',
-      summary: data.summary || '',
-    });
-    setSkills(data.skills || []);
-    setExperience(data.experience || []);
-    setProjects(data.projects || []);
-    setEducation(data.education || []);
-    setCertifications(data.certifications || []);
-  }, []);
-
+  // Sync Redux core data to local form state
   useEffect(() => {
-    let cancelled = false;
-
-    async function init() {
-      setLoading(true);
-      setError('');
-      try {
-        let id = authProfileId;
-        if (!id) {
-          const list = await api.listProfiles();
-          if (list.length) id = list[0].id;
-        }
-        if (id) {
-          setStoredProfileId(id);
-          setAuthProfileId(id);
-          await loadProfile(id);
-        }
-        if (!cancelled) setProfileId(id);
-      } catch (err) {
-        if (!cancelled) {
-          setError(
-            err.status === 401
-              ? 'Please sign in again.'
-              : err.message
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    if (reduxCore) {
+      setCore(reduxCore);
     }
+  }, [reduxCore]);
 
-    init();
-    return () => {
-      cancelled = true;
-    };
-  }, [loadProfile, authProfileId, setAuthProfileId]);
+  // Sync Auth profileId if changed via Redux
+  useEffect(() => {
+    if (profileId && profileId !== authProfileId) {
+      setAuthProfileId(profileId);
+    }
+  }, [profileId, authProfileId, setAuthProfileId]);
 
-  async function saveCore(e) {
+  // Fetch profile via Redux Thunk (Redux condition prevents refetch if already cached!)
+  useEffect(() => {
+    dispatch(fetchProfile(authProfileId));
+  }, [dispatch, authProfileId]);
+
+  async function handleSaveCore(e) {
     e.preventDefault();
     setStatus('');
     setError('');
     try {
-      if (!profileId) {
-        const created = await api.createProfile(core);
-        setProfileId(created.id);
-        setStoredProfileId(created.id);
-        setAuthProfileId(created.id);
-        setStatus('Profile created successfully!');
-      } else {
-        await api.updateProfile(profileId, core);
-        setStatus('Profile saved successfully!');
-      }
+      await dispatch(saveCoreProfile({ profileId, coreData: core })).unwrap();
+      setStatus('Profile saved successfully!');
     } catch (err) {
-      setError(err.message);
+      setError(err || 'Failed to save profile');
     }
   }
 
-  async function ensureProfile() {
-    if (profileId) return profileId;
-    const created = await api.createProfile(core);
-    setProfileId(created.id);
-    setStoredProfileId(created.id);
-    setAuthProfileId(created.id);
-    return created.id;
-  }
-
-  async function addSkill(e) {
+  async function handleAddSkill(e) {
     e.preventDefault();
+    setError('');
     try {
-      const id = await ensureProfile();
-      await api.addSkill(id, skillForm);
+      await dispatch(addSkill({ profileId, skillForm })).unwrap();
       setSkillForm({ category: '', name: '' });
-      await loadProfile(id);
     } catch (err) {
-      setError(err.message);
+      setError(err || 'Failed to add skill');
     }
   }
 
-  async function addExp(e) {
-    e.preventDefault();
+  async function handleDeleteSkill(skillId) {
+    setError('');
     try {
-      const id = await ensureProfile();
-      await api.addExperience(id, { ...expForm, end_date: expForm.end_date || null });
+      await dispatch(deleteSkill({ profileId, skillId })).unwrap();
+    } catch (err) {
+      setError(err || 'Failed to delete skill');
+    }
+  }
+
+  async function handleAddExp(e) {
+    e.preventDefault();
+    setError('');
+    try {
+      await dispatch(addExperience({ profileId, expForm })).unwrap();
       setExpForm({ role_title: '', company: '', location: '', start_date: '', end_date: '', description: '' });
-      await loadProfile(id);
     } catch (err) {
-      setError(err.message);
+      setError(err || 'Failed to add experience');
     }
   }
 
-  async function addProject(e) {
-    e.preventDefault();
+  async function handleDeleteExp(expId) {
+    setError('');
     try {
-      const id = await ensureProfile();
-      await api.addProject(id, {
-        ...projectForm,
-        tech_stack: projectForm.tech_stack.split(',').map((s) => s.trim()).filter(Boolean),
-      });
+      await dispatch(deleteExperience({ profileId, expId })).unwrap();
+    } catch (err) {
+      setError(err || 'Failed to delete experience');
+    }
+  }
+
+  async function handleAddProject(e) {
+    e.preventDefault();
+    setError('');
+    try {
+      await dispatch(addProject({ profileId, projectForm })).unwrap();
       setProjectForm({ name: '', url: '', description: '', tech_stack: '' });
-      await loadProfile(id);
     } catch (err) {
-      setError(err.message);
+      setError(err || 'Failed to add project');
     }
   }
 
-  async function addEdu(e) {
-    e.preventDefault();
+  async function handleDeleteProject(projectId) {
+    setError('');
     try {
-      const id = await ensureProfile();
-      await api.addEducation(id, eduForm);
+      await dispatch(deleteProject({ profileId, projectId })).unwrap();
+    } catch (err) {
+      setError(err || 'Failed to delete project');
+    }
+  }
+
+  async function handleAddEdu(e) {
+    e.preventDefault();
+    setError('');
+    try {
+      await dispatch(addEducation({ profileId, eduForm })).unwrap();
       setEduForm({ institution: '', degree: '', field: '', start_date: '', end_date: '' });
-      await loadProfile(id);
     } catch (err) {
-      setError(err.message);
+      setError(err || 'Failed to add education');
     }
   }
 
-  async function addCert(e) {
-    e.preventDefault();
+  async function handleDeleteEdu(eduId) {
+    setError('');
     try {
-      const id = await ensureProfile();
-      await api.addCertification(id, certForm);
-      setCertForm({ name: '', provider: '', issue_date: '', expiry_date: '', credential_id: '', credential_url: '' });
-      await loadProfile(id);
+      await dispatch(deleteEducation({ profileId, eduId })).unwrap();
     } catch (err) {
-      setError(err.message);
+      setError(err || 'Failed to delete education');
     }
   }
 
-  async function fillWithAi(e) {
+  async function handleAddCert(e) {
+    e.preventDefault();
+    setError('');
+    try {
+      await dispatch(addCertification({ profileId, certForm })).unwrap();
+      setCertForm({ name: '', provider: '', issue_date: '', expiry_date: '', credential_id: '', credential_url: '' });
+    } catch (err) {
+      setError(err || 'Failed to add certification');
+    }
+  }
+
+  async function handleDeleteCert(certId) {
+    setError('');
+    try {
+      await dispatch(deleteCertification({ profileId, certId })).unwrap();
+    } catch (err) {
+      setError(err || 'Failed to delete certification');
+    }
+  }
+
+  async function handleFillWithAi(e) {
     e.preventDefault();
     setError('');
     setStatus('');
@@ -294,29 +296,7 @@ export default function ProfilePage() {
     }
     setAiParsing(true);
     try {
-      const filled = await api.parseProfileAi({
-        text: pasteText,
-        profile_id: profileId || undefined,
-      });
-      setProfileId(filled.id);
-      setStoredProfileId(filled.id);
-      setAuthProfileId(filled.id);
-      setCore({
-        full_name: filled.full_name || '',
-        title: filled.title || '',
-        email: filled.email || '',
-        phone: filled.phone || '',
-        location: filled.location || '',
-        linkedin_url: filled.linkedin_url || '',
-        github_url: filled.github_url || '',
-        portfolio_url: filled.portfolio_url || '',
-        summary: filled.summary || '',
-      });
-      setSkills(filled.skills || []);
-      setExperience(filled.experience || []);
-      setProjects(filled.projects || []);
-      setEducation(filled.education || []);
-      setCertifications(filled.certifications || []);
+      const filled = await dispatch(parseProfileAi({ text: pasteText, profileId })).unwrap();
       setPasteText('');
       const m = filled.merge;
       if (m) {
@@ -326,21 +306,22 @@ export default function ProfilePage() {
           `AI merge complete — added ${addedTotal} new item(s), skipped ${skippedTotal} duplicate(s). Existing data was kept.`
         );
       } else {
-        setStatus(
-          'AI filled your profile from the pasted text. Review each section and edit anything that looks off.'
-        );
+        setStatus('AI filled your profile from the pasted text. Review each section.');
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
-      setError(err.message);
+      setError(err || 'AI parsing failed');
     } finally {
       setAiParsing(false);
     }
   }
 
-  if (loading) {
-    return <LoadingState label="Loading your profile…" />;
+  // Render Skeleton ONLY when profile is fetching from backend for the first time
+  if (reduxStatus === 'loading' && !profileId) {
+    return <ProfileSkeleton />;
   }
+
+  const displayError = error || reduxError;
 
   return (
     <div className="space-y-5 sm:space-y-6 rf-stagger">
@@ -349,12 +330,11 @@ export default function ProfilePage() {
         subtitle="Fill this once. Generations pull from this data — Gemini only rephrases and reorders what you enter here."
       />
 
-      {error && <Alert tone="error">{error}</Alert>}
+      {displayError && <Alert tone="error">{displayError}</Alert>}
       {status && <Alert tone="success">{status}</Alert>}
 
       {/* ── AI Fill ────────────────────────────────────────── */}
       <div className="rf-card rf-card-accent rf-enter overflow-hidden">
-        {/* Solid header strip */}
         <div className="px-6 pt-6 pb-5 bg-teal-50/80 border-b border-teal-200">
           <div className="flex items-center gap-3 mb-1">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-base border border-line-accent">
@@ -375,7 +355,7 @@ export default function ProfilePage() {
           </p>
         </div>
         <div className="p-6">
-          <form onSubmit={fillWithAi} className="space-y-3">
+          <form onSubmit={handleFillWithAi} className="space-y-3">
             <textarea
               className="rf-input min-h-[140px]"
               placeholder="Paste new or extra profile info here — CV text, LinkedIn export, notes…"
@@ -404,7 +384,7 @@ export default function ProfilePage() {
           </span>
           <CardTitle eyebrow="Identity">Core details</CardTitle>
         </div>
-        <form onSubmit={saveCore} className="grid gap-4 sm:grid-cols-2">
+        <form onSubmit={handleSaveCore} className="grid gap-4 sm:grid-cols-2">
           <Field
             label="Full name"
             value={core.full_name}
@@ -489,10 +469,7 @@ export default function ProfilePage() {
             {skills.map((s) => (
               <ListRow
                 key={s.id}
-                onRemove={async () => {
-                  await api.deleteSkill(profileId, s.id);
-                  await loadProfile(profileId);
-                }}
+                onRemove={() => handleDeleteSkill(s.id)}
               >
                 <div className="flex flex-wrap items-center gap-2">
                   {s.category && (
@@ -506,7 +483,7 @@ export default function ProfilePage() {
             ))}
           </ul>
         )}
-        <form onSubmit={addSkill} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+        <form onSubmit={handleAddSkill} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
           <Field
             label="Category"
             placeholder="Frontend"
@@ -541,10 +518,7 @@ export default function ProfilePage() {
           {experience.map((exp) => (
             <ListRow
               key={exp.id}
-              onRemove={async () => {
-                await api.deleteExperience(profileId, exp.id);
-                await loadProfile(profileId);
-              }}
+              onRemove={() => handleDeleteExp(exp.id)}
             >
               <p className="font-bold text-ink">
                 {exp.role_title}
@@ -563,7 +537,7 @@ export default function ProfilePage() {
             </ListRow>
           ))}
         </ul>
-        <form onSubmit={addExp} className="grid gap-3 sm:grid-cols-2">
+        <form onSubmit={handleAddExp} className="grid gap-3 sm:grid-cols-2">
           <Field
             label="Role title"
             value={expForm.role_title}
@@ -625,10 +599,7 @@ export default function ProfilePage() {
           {projects.map((p) => (
             <ListRow
               key={p.id}
-              onRemove={async () => {
-                await api.deleteProject(profileId, p.id);
-                await loadProfile(profileId);
-              }}
+              onRemove={() => handleDeleteProject(p.id)}
             >
               <p className="font-bold text-ink">{p.name}</p>
               {p.tech_stack?.length > 0 && (
@@ -648,7 +619,7 @@ export default function ProfilePage() {
             </ListRow>
           ))}
         </ul>
-        <form onSubmit={addProject} className="grid gap-3 sm:grid-cols-2">
+        <form onSubmit={handleAddProject} className="grid gap-3 sm:grid-cols-2">
           <Field
             label="Project name"
             value={projectForm.name}
@@ -699,10 +670,7 @@ export default function ProfilePage() {
           {education.map((edu) => (
             <ListRow
               key={edu.id}
-              onRemove={async () => {
-                await api.deleteEducation(profileId, edu.id);
-                await loadProfile(profileId);
-              }}
+              onRemove={() => handleDeleteEdu(edu.id)}
             >
               <p className="font-bold text-ink">
                 {edu.degree}
@@ -717,7 +685,7 @@ export default function ProfilePage() {
             </ListRow>
           ))}
         </ul>
-        <form onSubmit={addEdu} className="grid gap-3 sm:grid-cols-2">
+        <form onSubmit={handleAddEdu} className="grid gap-3 sm:grid-cols-2">
           <Field
             label="Institution"
             value={eduForm.institution}
@@ -772,10 +740,7 @@ export default function ProfilePage() {
           {certifications.map((c) => (
             <ListRow
               key={c.id}
-              onRemove={async () => {
-                await api.deleteCertification(profileId, c.id);
-                await loadProfile(profileId);
-              }}
+              onRemove={() => handleDeleteCert(c.id)}
             >
               <p className="font-bold text-ink">{c.name}</p>
               <p className="text-xs text-ink-muted mt-0.5">
@@ -785,7 +750,7 @@ export default function ProfilePage() {
             </ListRow>
           ))}
         </ul>
-        <form onSubmit={addCert} className="grid gap-3 sm:grid-cols-2">
+        <form onSubmit={handleAddCert} className="grid gap-3 sm:grid-cols-2">
           <Field
             label="Certificate name"
             value={certForm.name}

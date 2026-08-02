@@ -92,21 +92,119 @@ export function Spinner({ className = 'h-5 w-5' }) {
   );
 }
 
-/* ─── LoadingState ──────────────────────────────────────── */
-export function LoadingState({ label = 'Loading…' }) {
+/* ─── Skeleton Primitives & Page Loader Components ───────── */
+export function Skeleton({ className = 'h-4 w-full', ...props }) {
+  return <div className={`rf-skeleton ${className}`} {...props} />;
+}
+
+export function ProfileSkeleton() {
   return (
-    <div
-      className="rf-enter flex flex-col items-center justify-center gap-4 rounded-[var(--radius-xl)] border border-line bg-panel/80 px-6 py-20 text-ink-muted"
-      role="status"
-      aria-live="polite"
-    >
-      <div className="relative">
-        <div className="absolute inset-0 rounded-full bg-accent/10 animate-ping" />
-        <Spinner className="h-8 w-8 text-accent relative z-10" />
+    <div className="space-y-6 rf-enter">
+      <div className="space-y-2">
+        <Skeleton className="h-10 w-48 !rounded-lg" />
+        <Skeleton className="h-4 w-96 max-w-full" />
       </div>
-      <span className="text-sm font-semibold tracking-wide text-ink-muted">{label}</span>
+
+      <Card accent>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-9 w-9 !rounded-xl" />
+            <Skeleton className="h-6 w-32" />
+          </div>
+          <Skeleton className="h-32 w-full !rounded-xl" />
+          <Skeleton className="h-11 w-44 !rounded-lg" />
+        </div>
+      </Card>
+
+      <Card accent>
+        <div className="space-y-5">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-9 w-9 !rounded-xl" />
+            <Skeleton className="h-6 w-36" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2"><Skeleton className="h-3 w-20" /><Skeleton className="h-11 w-full !rounded-lg" /></div>
+            <div className="space-y-2"><Skeleton className="h-3 w-28" /><Skeleton className="h-11 w-full !rounded-lg" /></div>
+            <div className="space-y-2"><Skeleton className="h-3 w-16" /><Skeleton className="h-11 w-full !rounded-lg" /></div>
+            <div className="space-y-2"><Skeleton className="h-3 w-24" /><Skeleton className="h-11 w-full !rounded-lg" /></div>
+            <div className="space-y-2"><Skeleton className="h-3 w-20" /><Skeleton className="h-11 w-full !rounded-lg" /></div>
+            <div className="space-y-2"><Skeleton className="h-3 w-28" /><Skeleton className="h-11 w-full !rounded-lg" /></div>
+          </div>
+        </div>
+      </Card>
     </div>
   );
+}
+
+export function GenerateSkeleton() {
+  return (
+    <div className="space-y-6 rf-enter">
+      <div className="space-y-2">
+        <Skeleton className="h-10 w-40 !rounded-lg" />
+        <Skeleton className="h-4 w-80 max-w-full" />
+      </div>
+      <Card>
+        <div className="space-y-6">
+          <div>
+            <Skeleton className="h-4 w-32 mb-3" />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Skeleton className="h-16 w-full !rounded-xl" />
+              <Skeleton className="h-16 w-full !rounded-xl" />
+              <Skeleton className="h-16 w-full !rounded-xl" />
+            </div>
+          </div>
+          <div>
+            <Skeleton className="h-4 w-36 mb-3" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Skeleton className="h-20 w-full !rounded-xl" />
+              <Skeleton className="h-20 w-full !rounded-xl" />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2"><Skeleton className="h-3 w-20" /><Skeleton className="h-11 w-full !rounded-lg" /></div>
+            <div className="space-y-2"><Skeleton className="h-3 w-28" /><Skeleton className="h-11 w-full !rounded-lg" /></div>
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-32" />
+            <Skeleton className="h-44 w-full !rounded-xl" />
+          </div>
+          <Skeleton className="h-12 w-52 !rounded-lg" />
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+export function HistorySkeleton() {
+  return (
+    <div className="space-y-6 rf-enter">
+      <div className="space-y-2">
+        <Skeleton className="h-10 w-32 !rounded-lg" />
+        <Skeleton className="h-4 w-72 max-w-full" />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,300px)_1fr] lg:gap-6">
+        <div className="space-y-2.5">
+          <Skeleton className="h-20 w-full !rounded-xl" />
+          <Skeleton className="h-20 w-full !rounded-xl" />
+          <Skeleton className="h-20 w-full !rounded-xl" />
+          <Skeleton className="h-20 w-full !rounded-xl" />
+        </div>
+        <Card className="min-h-[350px]">
+          <div className="space-y-4">
+            <Skeleton className="h-7 w-56 !rounded-md" />
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="h-48 w-full !rounded-xl mt-4" />
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export function LoadingState({ type = 'profile' }) {
+  if (type === 'generate') return <GenerateSkeleton />;
+  if (type === 'history') return <HistorySkeleton />;
+  return <ProfileSkeleton />;
 }
 
 /* ─── PageHeader ────────────────────────────────────────── */

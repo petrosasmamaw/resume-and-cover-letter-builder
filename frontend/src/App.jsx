@@ -5,11 +5,11 @@ import GeneratePage from './pages/GeneratePage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import SignupPage from './pages/SignupPage.jsx';
-import { BrandMark, Button, LoadingState } from './components/ui.jsx';
+import { BrandMark, Button, ProfileSkeleton } from './components/ui.jsx';
 
 function Protected({ children }) {
   const { isAuthenticated, booting } = useAuth();
-  if (booting) return <LoadingState label="Checking your session…" />;
+  if (booting) return <ProfileSkeleton />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return children;
 }

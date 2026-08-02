@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { api, getStoredProfileId } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -8,9 +9,11 @@ import {
   Alert,
   Button,
   EmptyState,
-  LoadingState,
+  HistorySkeleton,
   PageHeader,
 } from '../components/ui.jsx';
+import { fetchHistory, setSelectedGeneration } from '../store/historySlice.js';
+import { fetchProfile } from '../store/profileSlice.js';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -34,7 +37,6 @@ function HistoryItem({ item, active, onClick }) {
     minute: '2-digit',
   });
 
-  const hasBoth = item.generated_resume_json && item.generated_cover_letter;
   const hasResume = !!item.generated_resume_json;
   const hasCover = !!item.generated_cover_letter;
 
@@ -46,7 +48,7 @@ function HistoryItem({ item, active, onClick }) {
         'w-full text-left rounded-xl border px-4 py-3.5 transition-all duration-150 group',
         active
           ? 'border-navy bg-gradient-to-br from-accent-soft to-panel shadow-soft'
-          : 'border-line bg-panel hover:border-accent/50 hover:shadow-soft',
+          : 'border-slate-300 bg-white hover:border-slate-400 hover:shadow-soft',
       ].join(' ')}
     >
       <div className="flex items-start justify-between gap-2">
@@ -68,7 +70,7 @@ function HistoryItem({ item, active, onClick }) {
       </div>
 
       <div className="flex items-center gap-2 mt-2.5">
-        <time className="text-[11px] text-ink-faint font-medium">
+        <time className="text-[11px] text-slate-500 font-medium">
           {dateStr} · {timeStr}
         </time>
       </div>
@@ -91,40 +93,27 @@ function HistoryItem({ item, active, onClick }) {
 
 /* ── Main page ─────────────────────────────────────────── */
 export default function HistoryPage() {
+  const dispatch = useDispatch();
   const { profileId: authProfileId } = useAuth();
   const profileId = authProfileId || getStoredProfileId();
-  const [items, setItems] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+
+  const historyState = useSelector((state) => state.history);
+  const profileState = useSelector((state) => state.profile);
+
+  const { items, selected, status: reduxStatus, error: reduxError } = historyState;
+  const { core: profileCore, skills, experience, projects, education, certifications } = profileState;
+
   const [copied, setCopied] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [error, setError] = useState('');
 
+  // Fetch History and Profile via Redux thunks (Smart condition skips backend refetch if already in Redux!)
   useEffect(() => {
-    if (!profileId) {
-      setLoading(false);
-      return;
+    if (profileId) {
+      dispatch(fetchHistory(profileId));
+      dispatch(fetchProfile(profileId));
     }
-
-    async function load() {
-      setLoading(true);
-      setError('');
-      try {
-        const [gens, prof] = await Promise.all([
-          api.listGenerations(profileId),
-          api.getProfile(profileId),
-        ]);
-        setItems(gens);
-        setProfile(prof);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [profileId]);
+  }, [dispatch, profileId]);
 
   async function handlePdf(id, company, template) {
     setPdfLoading(true);
@@ -162,7 +151,22 @@ export default function HistoryPage() {
     );
   }
 
-  if (loading) return <LoadingState label="Loading your history…" />;
+  // Render skeleton ONLY if fetching history for the first time
+  if (reduxStatus === 'loading' && items.length === 0) {
+    return <HistorySkeleton />;
+  }
+
+  const displayError = error || reduxError;
+
+  // Build full profile object for preview if needed
+  const fullProfile = {
+    ...profileCore,
+    skills,
+    experience,
+    projects,
+    education,
+    certifications,
+  };
 
   return (
     <div className="space-y-5 sm:space-y-6 rf-stagger">
@@ -178,7 +182,7 @@ export default function HistoryPage() {
         }
       />
 
-      {error && <Alert tone="error">{error}</Alert>}
+      {displayError && <Alert tone="error">{displayError}</Alert>}
 
       {items.length === 0 ? (
         <EmptyState
@@ -195,7 +199,7 @@ export default function HistoryPage() {
 
           {/* ── Left panel: List ──────────────────────────── */}
           <div className="lg:sticky lg:top-24 lg:self-start">
-            <p className="text-xs font-bold uppercase tracking-widest text-ink-muted mb-3 px-0.5">
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-600 mb-3 px-0.5">
               Applications
             </p>
             <ul className="space-y-2 max-h-[45vh] lg:max-h-[calc(100vh-180px)] overflow-y-auto pr-1">
@@ -204,7 +208,7 @@ export default function HistoryPage() {
                   <HistoryItem
                     item={item}
                     active={selected?.id === item.id}
-                    onClick={() => setSelected(item)}
+                    onClick={() => dispatch(setSelectedGeneration(item))}
                   />
                 </li>
               ))}
@@ -218,12 +222,12 @@ export default function HistoryPage() {
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-soft text-2xl">
                   👈
                 </div>
-                <p className="text-sm font-semibold text-ink-muted">
+                <p className="text-sm font-semibold text-slate-700">
                   Select an application from the list to preview details
                 </p>
               </div>
             ) : (
-              <div className="space-y-5 rf-enter-right">
+              <div className="space-y-5 rf-enter">
 
                 {/* Action bar */}
                 <div className="rf-card p-4 flex flex-wrap items-center gap-2.5">
@@ -231,7 +235,7 @@ export default function HistoryPage() {
                     <p className="font-bold text-navy text-sm truncate">
                       {selected.job_title}
                     </p>
-                    <p className="text-xs text-ink-muted truncate">
+                    <p className="text-xs text-slate-600 truncate">
                       {selected.company_name}
                     </p>
                   </div>
@@ -291,7 +295,7 @@ export default function HistoryPage() {
                 {selected.generated_resume_json && (
                   <ResumePreview
                     resume={selected.generated_resume_json}
-                    profile={profile}
+                    profile={fullProfile}
                     template={selected.resume_template || 'color'}
                   />
                 )}
