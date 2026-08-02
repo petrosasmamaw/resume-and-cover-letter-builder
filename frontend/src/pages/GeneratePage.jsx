@@ -28,7 +28,7 @@ const OUTPUT_MODES = [
   {
     id: 'both',
     label: 'Resume + Cover letter',
-    hint: 'Generate both documents',
+    hint: 'Generate both documents at once',
   },
   {
     id: 'resume',
@@ -45,13 +45,15 @@ const OUTPUT_MODES = [
 const TEMPLATES = [
   {
     id: 'color',
-    label: 'Modern single column (ATS-Safe)',
+    label: 'Modern single column',
     hint: 'Minimal, left-aligned, parses cleanly',
+    badge: 'ATS-Safe',
   },
   {
     id: 'simple',
-    label: 'Premium ATS (single-column)',
+    label: 'Premium ATS',
     hint: 'Inter + blue hierarchy, recruiter-scan optimized',
+    badge: 'ATS-Safe',
   },
 ];
 
@@ -64,6 +66,103 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
+/* ── Character counter bar ─────────────────────────────── */
+function CharBar({ count, target }) {
+  const pct = Math.min(100, Math.round((count / target) * 100));
+  const delta = count - target;
+  const color =
+    Math.abs(delta) < target * 0.1
+      ? 'bg-success'
+      : Math.abs(delta) < target * 0.25
+      ? 'bg-warning'
+      : 'bg-danger';
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-xs text-ink-muted">
+        <span>{count.toLocaleString()} chars</span>
+        <span className={Math.abs(delta) < 50 ? 'text-success font-semibold' : ''}>
+          target {target} ({delta >= 0 ? '+' : ''}{delta})
+        </span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-line overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-300 ${color}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ── Detection score display ───────────────────────────── */
+function DetectionCard({ stats }) {
+  const aiPct = Math.round((stats.aiProbability || 0) * 100);
+  const confPct = Math.round((stats.confidence || 0) * 100);
+  const isHuman = stats.prediction === 'human';
+
+  return (
+    <div className={`rounded-xl border px-4 py-3.5 text-sm space-y-2 ${
+      isHuman
+        ? 'border-success/30 bg-success-soft'
+        : 'border-danger/30 bg-danger-soft'
+    }`}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-bold text-ink">
+          AI Detection:{' '}
+          <span className={`capitalize ${isHuman ? 'text-success' : 'text-danger'}`}>
+            {stats.prediction}
+          </span>
+        </p>
+        <span className={`rf-badge ${isHuman ? 'rf-badge-success' : 'bg-danger-soft text-danger border border-danger/30'}`}>
+          {aiPct}% AI
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-ink-muted">
+        <span>Confidence: {confPct}%</span>
+        <span>Readability: {stats.readability?.fleschReadingEase ?? '—'}</span>
+        <span>Burstiness σ: {stats.burstiness?.stdDev ?? '—'}</span>
+        <span>Avg sentence: {stats.readability?.avgSentenceLength ?? '—'} words</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Humanize stats card ───────────────────────────────── */
+function HumanizeCard({ stats }) {
+  return (
+    <div className="rounded-xl border border-accent/30 bg-accent-soft px-4 py-3.5 text-sm space-y-2">
+      <p className="font-bold text-navy">
+        ✨ Humanized via NLP pipeline
+        {stats.improved ? (
+          <span className="ml-2 text-xs font-semibold text-success">
+            · AI score reduced
+          </span>
+        ) : null}
+      </p>
+      {stats.metrics && (
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-ink-muted">
+          <span>
+            Similarity:{' '}
+            {Math.round((stats.metrics.semanticSimilarity || 0) * 100)}%
+          </span>
+          <span>
+            Readability: {stats.metrics.readability?.fleschReadingEase ?? '—'}
+          </span>
+          <span>Burstiness σ: {stats.metrics.burstiness?.stdDev ?? '—'}</span>
+          <span>
+            Lexical: {stats.metrics.vocabulary?.lexicalDiversity ?? '—'}
+          </span>
+        </div>
+      )}
+      {stats.warning && (
+        <p className="text-xs font-medium text-warning">{stats.warning}</p>
+      )}
+    </div>
+  );
+}
+
+/* ── Main page ─────────────────────────────────────────── */
 export default function GeneratePage() {
   const [searchParams] = useSearchParams();
   const { profileId: authProfileId } = useAuth();
@@ -137,9 +236,7 @@ export default function GeneratePage() {
       return;
     }
 
-    const length = customLength
-      ? Number(customLength)
-      : Number(coverLetterLength);
+    const length = customLength ? Number(customLength) : Number(coverLetterLength);
 
     setLoading(true);
     try {
@@ -202,8 +299,6 @@ export default function GeneratePage() {
         warning: result.warning,
         improved: result.improved,
         metrics: result.metrics,
-        before: result.before,
-        after: result.after,
       });
       if (result.after?.detection) {
         setDetectionStats(result.after.detection);
@@ -233,7 +328,6 @@ export default function GeneratePage() {
     ? Number(customLength) || coverLetterLength
     : coverLetterLength;
   const charCount = coverLetter.length;
-  const charDelta = charCount - targetLength;
   const hasResults = !loading && (resume || coverLetter);
 
   if (!profileId) {
@@ -251,26 +345,31 @@ export default function GeneratePage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 rf-stagger">
+    <div className="space-y-5 sm:space-y-6 rf-stagger">
       <PageHeader
         title="Generate"
-        subtitle="Choose outputs, pick an ATS-safe template, paste the job posting, then generate."
+        subtitle="Pick your outputs, select an ATS-safe template, paste the job posting — then generate."
       />
 
       {health && !health.gemini_ready && (
         <Alert tone="warning">
           Gemini API key is still the placeholder. Add your real{' '}
-          <code className="text-xs">GEMINI_API_KEY</code> in{' '}
-          <code className="text-xs">backend/.env</code> and restart the backend.
+          <code className="text-xs font-mono bg-warning-soft px-1 rounded">GEMINI_API_KEY</code>{' '}
+          in{' '}
+          <code className="text-xs font-mono bg-warning-soft px-1 rounded">backend/.env</code>{' '}
+          and restart the backend.
         </Alert>
       )}
 
       {error && <Alert tone="error">{error}</Alert>}
 
+      {/* ── Form Card ───────────────────────────────────────── */}
       <Card>
-        <form onSubmit={handleGenerate} className="space-y-5">
+        <form onSubmit={handleGenerate} className="space-y-6">
+
+          {/* Output mode */}
           <div>
-            <p className="text-sm font-semibold text-ink mb-2">What to generate</p>
+            <p className="text-sm font-bold text-ink mb-3">What to generate</p>
             <ChoiceCards
               options={OUTPUT_MODES}
               value={outputMode}
@@ -278,10 +377,11 @@ export default function GeneratePage() {
             />
           </div>
 
+          {/* Resume template */}
           {wantsResume && (
             <div>
-              <p className="text-sm font-semibold text-ink mb-2">Resume template</p>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <p className="text-sm font-bold text-ink mb-3">Resume template</p>
+              <div className="grid gap-3 sm:grid-cols-2">
                 {TEMPLATES.map((opt) => {
                   const active = resumeTemplate === opt.id;
                   return (
@@ -289,39 +389,48 @@ export default function GeneratePage() {
                       key={opt.id}
                       type="button"
                       onClick={() => setResumeTemplate(opt.id)}
-                      className={`rf-choice ${active ? 'rf-choice-active' : ''}`}
+                      className={`rf-choice ${active ? 'rf-choice-active' : ''} text-left`}
                       aria-pressed={active}
                     >
                       <div className="flex items-start gap-3">
+                        {/* Template thumbnail */}
                         <div
-                          className={`mt-0.5 h-11 w-9 shrink-0 rounded-md border overflow-hidden ${
+                          className={`mt-0.5 h-12 w-10 shrink-0 rounded-lg border overflow-hidden shadow-xs ${
                             opt.id === 'color'
-                              ? 'bg-navy border-navy'
-                              : 'bg-white border-line'
+                              ? 'border-accent/40'
+                              : 'border-line-strong'
                           }`}
                         >
                           {opt.id === 'color' ? (
-                            <div className="h-full w-full bg-gradient-to-b from-accent/40 to-navy" />
+                            <div className="h-full w-full bg-gradient-to-b from-accent/50 via-navy/60 to-navy" />
                           ) : (
-                            <div className="h-full flex flex-col items-center justify-start pt-1.5 gap-0.5 px-1">
-                              <div className="h-0.5 w-5 bg-navy" />
-                              <div className="h-px w-full bg-navy mt-1" />
+                            <div className="h-full flex flex-col items-start justify-start pt-1.5 gap-0.5 px-1.5 bg-white">
+                              <div className="h-1 w-6 bg-navy rounded-full" />
+                              <div className="h-px w-full bg-navy/30 mt-1" />
                               <div className="h-px w-full bg-line" />
-                              <div className="h-px w-full bg-line" />
+                              <div className="h-px w-5 bg-line" />
+                              <div className="h-px w-full bg-line mt-0.5" />
                             </div>
                           )}
                         </div>
-                        <div>
-                          <p className="text-sm font-semibold text-ink">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-ink leading-tight">
                             {opt.label}
                           </p>
                           <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">
                             {opt.hint}
                           </p>
-                          <span className="mt-2 inline-flex rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-navy">
-                            ATS-Safe
+                          <span className="mt-1.5 inline-flex rf-badge rf-badge-accent">
+                            {opt.badge}
                           </span>
                         </div>
+                        {active && (
+                          <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-navy">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
+                              <path d="M5 12l5 5L20 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </span>
+                        )}
                       </div>
                     </button>
                   );
@@ -330,34 +439,38 @@ export default function GeneratePage() {
             </div>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          {/* Job fields */}
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field
               label="Job title"
               value={jobTitle}
               onChange={(e) => setJobTitle(e.target.value)}
               required
+              placeholder="Senior Software Engineer"
             />
             <Field
               label="Company name"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               required
+              placeholder="Acme Corporation"
             />
           </div>
 
           <Field
             label="Job description"
             as="textarea"
-            className="min-h-[180px]"
+            className="min-h-[200px]"
             value={jobDescription}
             onChange={(e) => setJobDescription(e.target.value)}
             required
-            placeholder="Paste the full job description here…"
+            placeholder="Paste the full job description here — the more detail, the better the tailoring…"
           />
 
+          {/* Cover letter length */}
           {wantsCover && (
             <div>
-              <p className="text-sm text-ink-muted mb-2">Cover letter length</p>
+              <p className="text-sm font-bold text-ink mb-3">Cover letter length</p>
               <div className="flex flex-wrap items-center gap-2">
                 {LENGTH_PRESETS.map((p) => (
                   <button
@@ -367,23 +480,24 @@ export default function GeneratePage() {
                       setCoverLetterLength(p.value);
                       setCustomLength('');
                     }}
-                    className={`rf-btn !min-h-9 !px-3 !text-xs ${
+                    className={`rf-btn !min-h-9 !px-3.5 !text-xs !rounded-lg ${
                       !customLength && coverLetterLength === p.value
                         ? 'rf-btn-primary'
                         : 'rf-btn-ghost'
                     }`}
                   >
-                    {p.label} ~{p.value}
+                    {p.label}
+                    <span className="text-[10px] opacity-70">~{p.value}</span>
                   </button>
                 ))}
                 <label className="flex items-center gap-2 text-sm">
-                  <span className="text-ink-muted">Custom</span>
+                  <span className="text-ink-muted font-medium text-xs">Custom:</span>
                   <input
                     type="number"
                     min={200}
                     max={5000}
                     placeholder="chars"
-                    className="rf-input w-24 !py-1.5"
+                    className="rf-input !w-24 !py-1.5 !px-2.5 !text-sm"
                     value={customLength}
                     onChange={(e) => setCustomLength(e.target.value)}
                   />
@@ -392,33 +506,51 @@ export default function GeneratePage() {
             </div>
           )}
 
-          <Button type="submit" loading={loading} className="w-full sm:w-auto">
-            {loading ? 'Generating…' : 'Generate application'}
-          </Button>
+          {/* Submit */}
+          <div className="pt-1">
+            <Button
+              type="submit"
+              loading={loading}
+              className="w-full sm:w-auto !min-h-12 !text-base !px-8"
+            >
+              {loading ? (
+                <>Generating…</>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                  </svg>
+                  Generate application
+                </>
+              )}
+            </Button>
+          </div>
         </form>
       </Card>
 
+      {/* ── Loading state ───────────────────────────────────── */}
       {loading && (
-        <LoadingState label="Calling Gemini and crafting your materials…" />
+        <LoadingState label="Calling Gemini and crafting your tailored materials…" />
       )}
 
+      {/* ── Results ─────────────────────────────────────────── */}
       {hasResults && (
-        <div className="space-y-5 rf-enter">
+        <div className="space-y-6 rf-enter">
           {resume?.requirement_match && (
             <RequirementMatch items={resume.requirement_match} />
           )}
 
+          {/* Resume preview */}
           {resume && (
-            <section className="space-y-3">
+            <section className="space-y-4">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div>
-                  <h2 className="text-lg font-semibold text-navy">
-                    Resume preview
-                  </h2>
+                  <h2 className="text-xl font-bold text-navy">Resume preview</h2>
                   <p className="text-xs text-ink-muted mt-0.5">
                     Template:{' '}
-                    {TEMPLATES.find((t) => t.id === resumeTemplate)?.label ||
-                      resumeTemplate}
+                    <span className="font-medium">
+                      {TEMPLATES.find((t) => t.id === resumeTemplate)?.label || resumeTemplate}
+                    </span>
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -427,10 +559,8 @@ export default function GeneratePage() {
                       key={t.id}
                       type="button"
                       onClick={() => setResumeTemplate(t.id)}
-                      className={`rf-btn !min-h-9 !px-3 !text-xs ${
-                        resumeTemplate === t.id
-                          ? 'rf-btn-primary'
-                          : 'rf-btn-ghost'
+                      className={`rf-btn !min-h-9 !px-3 !text-xs !rounded-lg ${
+                        resumeTemplate === t.id ? 'rf-btn-primary' : 'rf-btn-ghost'
                       }`}
                     >
                       {t.id === 'color' ? 'Modern' : 'Premium'}
@@ -439,12 +569,15 @@ export default function GeneratePage() {
                   <Button
                     type="button"
                     variant="accent"
-                    className="!min-h-9 !text-xs"
+                    className="!min-h-9 !text-xs !rounded-lg gap-1.5"
                     onClick={handlePdf}
                     loading={pdfLoading}
                     disabled={pdfLoading || !generationId}
                   >
-                    {pdfLoading ? 'Building PDF…' : 'Download PDF'}
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    {pdfLoading ? 'Building…' : 'Download PDF'}
                   </Button>
                 </div>
               </div>
@@ -456,102 +589,67 @@ export default function GeneratePage() {
             </section>
           )}
 
+          {/* Cover letter */}
           {coverLetter && (
-            <section className="rf-card p-4 sm:p-5 space-y-3">
+            <section className="rf-card p-5 sm:p-6 space-y-4">
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                <h2 className="text-lg font-semibold text-navy">Cover letter</h2>
+                <h2 className="text-xl font-bold text-navy">Cover letter</h2>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     variant="secondary"
-                    className="!min-h-9 !text-xs"
+                    className="!min-h-9 !text-xs !rounded-lg gap-1.5"
                     onClick={handleDetect}
                     loading={detecting}
                     disabled={detecting || !generationId}
                   >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+                      <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" />
+                      <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
                     {detecting ? 'Analyzing…' : 'Check AI'}
                   </Button>
                   <Button
                     type="button"
-                    className="!min-h-9 !text-xs"
+                    className="!min-h-9 !text-xs !rounded-lg gap-1.5"
                     onClick={handleHumanize}
                     loading={humanizing}
                     disabled={humanizing || !generationId}
                   >
-                    {humanizing ? 'Humanizing…' : 'Humanize'}
+                    ✨ {humanizing ? 'Humanizing…' : 'Humanize'}
                   </Button>
                   <Button
                     type="button"
                     variant="ghost"
-                    className="!min-h-9 !text-xs"
+                    className="!min-h-9 !text-xs !rounded-lg gap-1.5"
                     onClick={copyCoverLetter}
                   >
-                    {copied ? 'Copied!' : 'Copy'}
+                    {copied ? (
+                      <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>Copied!</>
+                    ) : (
+                      <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden><rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2" /></svg>Copy</>
+                    )}
                   </Button>
                 </div>
               </div>
-              <p className="text-xs text-ink-muted">
-                {charCount} characters
-                {wantsCover && targetLength
-                  ? ` · target ${targetLength} (${charDelta >= 0 ? '+' : ''}${charDelta})`
-                  : ''}
-                {' · '}Humanize only rewrites the cover letter.
-              </p>
-              {detectionStats && (
-                <div className="rounded-[var(--radius-md)] border border-line bg-surface px-3 py-2.5 text-xs text-ink space-y-1">
-                  <p className="font-semibold">
-                    AI detection:{' '}
-                    <span className="capitalize">
-                      {detectionStats.prediction}
-                    </span>
-                    {' · '}
-                    {Math.round((detectionStats.confidence || 0) * 100)}% confidence
-                    {' · '}
-                    AI score{' '}
-                    {Math.round((detectionStats.aiProbability || 0) * 100)}%
-                  </p>
-                  <p className="text-ink-muted">
-                    Readability{' '}
-                    {detectionStats.readability?.fleschReadingEase ?? '—'}
-                    {' · '}
-                    Burstiness σ {detectionStats.burstiness?.stdDev ?? '—'}
-                    {' · '}
-                    Avg sentence{' '}
-                    {detectionStats.readability?.avgSentenceLength ?? '—'} words
-                  </p>
-                </div>
+
+              {wantsCover && targetLength ? (
+                <CharBar count={charCount} target={targetLength} />
+              ) : (
+                <p className="text-xs text-ink-muted">{charCount.toLocaleString()} characters</p>
               )}
-              {humanizeStats && (
-                <div className="rounded-[var(--radius-md)] border border-accent/30 bg-accent-soft px-3 py-2.5 text-xs text-navy space-y-1">
-                  <p className="font-semibold">
-                    Humanized via NLP pipeline
-                    {humanizeStats.improved ? ' · AI score reduced' : ''}
-                  </p>
-                  {humanizeStats.metrics && (
-                    <p>
-                      Similarity{' '}
-                      {Math.round(
-                        (humanizeStats.metrics.semanticSimilarity || 0) * 100
-                      )}
-                      % · Readability{' '}
-                      {humanizeStats.metrics.readability?.fleschReadingEase ??
-                        '—'}{' '}
-                      · Burstiness σ{' '}
-                      {humanizeStats.metrics.burstiness?.stdDev ?? '—'} · Lexical{' '}
-                      {humanizeStats.metrics.vocabulary?.lexicalDiversity ??
-                        '—'}
-                    </p>
-                  )}
-                  {humanizeStats.warning && (
-                    <p className="text-warning">{humanizeStats.warning}</p>
-                  )}
-                </div>
-              )}
+
+              {detectionStats && <DetectionCard stats={detectionStats} />}
+              {humanizeStats && <HumanizeCard stats={humanizeStats} />}
+
               <textarea
                 readOnly
                 value={coverLetter}
-                className="rf-input min-h-[240px] leading-relaxed"
+                className="rf-input min-h-[260px] leading-relaxed font-sans"
               />
+              <p className="text-xs text-ink-muted">
+                💡 Humanize only rewrites the cover letter — your resume PDF is unaffected.
+              </p>
             </section>
           )}
         </div>

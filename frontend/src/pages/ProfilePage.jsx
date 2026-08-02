@@ -26,27 +26,69 @@ const emptyCore = {
   summary: '',
 };
 
-function Section({ title, eyebrow, children }) {
+/* ── Section wrapper ──────────────────────────────────── */
+function Section({ title, eyebrow, children, icon }) {
   return (
-    <Card className="rf-enter">
-      <CardTitle eyebrow={eyebrow}>{title}</CardTitle>
+    <Card className="rf-enter" accent>
+      <div className="flex items-start gap-3 mb-5">
+        {icon && (
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-navy text-base">
+            {icon}
+          </div>
+        )}
+        <CardTitle eyebrow={eyebrow}>{title}</CardTitle>
+      </div>
       {children}
     </Card>
   );
 }
 
+/* ── Textarea field ───────────────────────────────────── */
 function TextArea({ label, ...props }) {
-  return <Field label={label} as="textarea" className="min-h-[88px]" {...props} />;
+  return <Field label={label} as="textarea" className="min-h-[96px]" {...props} />;
 }
 
+/* ── Empty list placeholder ───────────────────────────── */
 function EmptyList({ label }) {
   return (
-    <p className="mb-4 rounded-[var(--radius-md)] border border-dashed border-line bg-surface/60 px-3 py-4 text-sm text-ink-muted">
+    <div className="mb-4 flex items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-700">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0 text-slate-500">
+        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 2" />
+        <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
       No {label} yet — add your first below.
-    </p>
+    </div>
   );
 }
 
+/* ── Remove button ────────────────────────────────────── */
+function RemoveBtn({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rf-btn rf-btn-danger !min-h-8 !px-2.5 !text-xs shrink-0 gap-1"
+      aria-label="Remove"
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+      <span className="hidden sm:inline">Remove</span>
+    </button>
+  );
+}
+
+/* ── List item row ────────────────────────────────────── */
+function ListRow({ children, onRemove }) {
+  return (
+    <li className="flex items-start justify-between gap-3 rounded-xl border border-slate-300 bg-slate-50 px-4 py-3.5 shadow-xs transition-colors hover:bg-white">
+      <div className="min-w-0 flex-1 text-sm">{children}</div>
+      <RemoveBtn onClick={onRemove} />
+    </li>
+  );
+}
+
+/* ── Main component ───────────────────────────────────── */
 export default function ProfilePage() {
   const { profileId: authProfileId, setProfileId: setAuthProfileId } = useAuth();
   const [profileId, setProfileId] = useState(authProfileId);
@@ -160,10 +202,10 @@ export default function ProfilePage() {
         setProfileId(created.id);
         setStoredProfileId(created.id);
         setAuthProfileId(created.id);
-        setStatus('Profile created');
+        setStatus('Profile created successfully!');
       } else {
         await api.updateProfile(profileId, core);
-        setStatus('Profile saved');
+        setStatus('Profile saved successfully!');
       }
     } catch (err) {
       setError(err.message);
@@ -195,18 +237,8 @@ export default function ProfilePage() {
     e.preventDefault();
     try {
       const id = await ensureProfile();
-      await api.addExperience(id, {
-        ...expForm,
-        end_date: expForm.end_date || null,
-      });
-      setExpForm({
-        role_title: '',
-        company: '',
-        location: '',
-        start_date: '',
-        end_date: '',
-        description: '',
-      });
+      await api.addExperience(id, { ...expForm, end_date: expForm.end_date || null });
+      setExpForm({ role_title: '', company: '', location: '', start_date: '', end_date: '', description: '' });
       await loadProfile(id);
     } catch (err) {
       setError(err.message);
@@ -219,10 +251,7 @@ export default function ProfilePage() {
       const id = await ensureProfile();
       await api.addProject(id, {
         ...projectForm,
-        tech_stack: projectForm.tech_stack
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean),
+        tech_stack: projectForm.tech_stack.split(',').map((s) => s.trim()).filter(Boolean),
       });
       setProjectForm({ name: '', url: '', description: '', tech_stack: '' });
       await loadProfile(id);
@@ -236,13 +265,7 @@ export default function ProfilePage() {
     try {
       const id = await ensureProfile();
       await api.addEducation(id, eduForm);
-      setEduForm({
-        institution: '',
-        degree: '',
-        field: '',
-        start_date: '',
-        end_date: '',
-      });
+      setEduForm({ institution: '', degree: '', field: '', start_date: '', end_date: '' });
       await loadProfile(id);
     } catch (err) {
       setError(err.message);
@@ -254,14 +277,7 @@ export default function ProfilePage() {
     try {
       const id = await ensureProfile();
       await api.addCertification(id, certForm);
-      setCertForm({
-        name: '',
-        provider: '',
-        issue_date: '',
-        expiry_date: '',
-        credential_id: '',
-        credential_url: '',
-      });
+      setCertForm({ name: '', provider: '', issue_date: '', expiry_date: '', credential_id: '', credential_url: '' });
       await loadProfile(id);
     } catch (err) {
       setError(err.message);
@@ -305,10 +321,7 @@ export default function ProfilePage() {
       const m = filled.merge;
       if (m) {
         const addedTotal = Object.values(m.added || {}).reduce((a, b) => a + b, 0);
-        const skippedTotal = Object.values(m.skipped || {}).reduce(
-          (a, b) => a + b,
-          0
-        );
+        const skippedTotal = Object.values(m.skipped || {}).reduce((a, b) => a + b, 0);
         setStatus(
           `AI merge complete — added ${addedTotal} new item(s), skipped ${skippedTotal} duplicate(s). Existing data was kept.`
         );
@@ -326,11 +339,11 @@ export default function ProfilePage() {
   }
 
   if (loading) {
-    return <LoadingState label="Loading profile…" />;
+    return <LoadingState label="Loading your profile…" />;
   }
 
   return (
-    <div className="space-y-4 sm:space-y-5 rf-stagger">
+    <div className="space-y-5 sm:space-y-6 rf-stagger">
       <PageHeader
         title="Your profile"
         subtitle="Fill this once. Generations pull from this data — Gemini only rephrases and reorders what you enter here."
@@ -339,447 +352,484 @@ export default function ProfilePage() {
       {error && <Alert tone="error">{error}</Alert>}
       {status && <Alert tone="success">{status}</Alert>}
 
-      <Section title="Fill with AI" eyebrow="Fast start">
-        <p className="text-sm text-ink-muted mb-3 leading-relaxed">
-          Paste a CV, LinkedIn export, or notes. AI merges into your existing
-          profile: duplicates are skipped, only new items are added.
-        </p>
-        <form onSubmit={fillWithAi} className="space-y-3">
-          <textarea
-            className="rf-input min-h-[160px]"
-            placeholder="Paste new or extra profile info here…"
-            value={pasteText}
-            onChange={(e) => setPasteText(e.target.value)}
-            disabled={aiParsing}
-          />
-          <Button
-            type="submit"
-            variant="accent"
-            loading={aiParsing}
-            disabled={aiParsing || !pasteText.trim()}
-          >
-            {aiParsing
-              ? 'Classifying & merging…'
-              : 'Classify & merge into profile'}
-          </Button>
-        </form>
-      </Section>
+      {/* ── AI Fill ────────────────────────────────────────── */}
+      <div className="rf-card rf-card-accent rf-enter overflow-hidden">
+        {/* Solid header strip */}
+        <div className="px-6 pt-6 pb-5 bg-teal-50/80 border-b border-teal-200">
+          <div className="flex items-center gap-3 mb-1">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-base border border-line-accent">
+              🤖
+            </span>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent">
+                Fast start
+              </p>
+              <h2 className="text-xl font-bold text-navy tracking-tight">
+                Fill with AI
+              </h2>
+            </div>
+          </div>
+          <p className="text-sm text-slate-700 leading-relaxed mt-2 ml-12">
+            Paste a CV, LinkedIn export, or notes. AI merges into your existing
+            profile — duplicates are skipped, only new items are added.
+          </p>
+        </div>
+        <div className="p-6">
+          <form onSubmit={fillWithAi} className="space-y-3">
+            <textarea
+              className="rf-input min-h-[140px]"
+              placeholder="Paste new or extra profile info here — CV text, LinkedIn export, notes…"
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              disabled={aiParsing}
+            />
+            <Button
+              type="submit"
+              variant="accent"
+              loading={aiParsing}
+              disabled={aiParsing || !pasteText.trim()}
+              className="w-full sm:w-auto !min-h-11"
+            >
+              {aiParsing ? 'Classifying & merging…' : '✨ Classify & merge into profile'}
+            </Button>
+          </form>
+        </div>
+      </div>
 
-      <Section title="Core details" eyebrow="Identity">
-        <form onSubmit={saveCore} className="grid gap-3 sm:grid-cols-2">
+      {/* ── Core Details ───────────────────────────────────── */}
+      <Card accent className="rf-enter">
+        <div className="flex items-start gap-3 mb-5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-base border border-line-accent">
+            👤
+          </span>
+          <CardTitle eyebrow="Identity">Core details</CardTitle>
+        </div>
+        <form onSubmit={saveCore} className="grid gap-4 sm:grid-cols-2">
           <Field
             label="Full name"
             value={core.full_name}
             onChange={(e) => setCore({ ...core, full_name: e.target.value })}
             required
+            placeholder="Jane Smith"
           />
           <Field
-            label="Title"
+            label="Professional title"
             value={core.title}
             onChange={(e) => setCore({ ...core, title: e.target.value })}
+            placeholder="Senior Software Engineer"
           />
           <Field
             label="Email"
             type="email"
             value={core.email}
             onChange={(e) => setCore({ ...core, email: e.target.value })}
+            placeholder="jane@example.com"
+            autoComplete="email"
           />
           <Field
             label="Phone"
+            type="tel"
             value={core.phone}
             onChange={(e) => setCore({ ...core, phone: e.target.value })}
+            placeholder="+1 (555) 000-0000"
+            autoComplete="tel"
           />
           <Field
             label="Location"
             value={core.location}
             onChange={(e) => setCore({ ...core, location: e.target.value })}
+            placeholder="San Francisco, CA"
           />
           <Field
             label="LinkedIn URL"
             value={core.linkedin_url}
             onChange={(e) => setCore({ ...core, linkedin_url: e.target.value })}
+            placeholder="linkedin.com/in/janesmith"
           />
           <Field
             label="GitHub URL"
             value={core.github_url}
             onChange={(e) => setCore({ ...core, github_url: e.target.value })}
+            placeholder="github.com/janesmith"
           />
           <Field
             label="Portfolio URL"
             value={core.portfolio_url}
-            onChange={(e) =>
-              setCore({ ...core, portfolio_url: e.target.value })
-            }
+            onChange={(e) => setCore({ ...core, portfolio_url: e.target.value })}
+            placeholder="janesmith.dev"
           />
           <div className="sm:col-span-2">
             <TextArea
               label="Summary / about me"
               value={core.summary}
               onChange={(e) => setCore({ ...core, summary: e.target.value })}
+              placeholder="A brief professional summary that highlights your experience and goals…"
             />
           </div>
-          <div className="sm:col-span-2">
-            <Button type="submit">
+          <div className="sm:col-span-2 pt-1">
+            <Button type="submit" className="!min-h-11">
               {profileId ? 'Save profile' : 'Create profile'}
             </Button>
           </div>
         </form>
-      </Section>
+      </Card>
 
-      <Section title="Skills" eyebrow="Capabilities">
+      {/* ── Skills ─────────────────────────────────────────── */}
+      <Card accent className="rf-enter">
+        <div className="flex items-start gap-3 mb-5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-base border border-line-accent">
+            ⚡
+          </span>
+          <CardTitle eyebrow="Capabilities">Skills</CardTitle>
+        </div>
         {skills.length === 0 ? (
           <EmptyList label="skills" />
         ) : (
-          <ul className="mb-4 space-y-1 text-sm">
+          <ul className="mb-5 space-y-2">
             {skills.map((s) => (
-              <li
+              <ListRow
                 key={s.id}
-                className="flex items-center justify-between gap-3 border-b border-line py-2.5"
+                onRemove={async () => {
+                  await api.deleteSkill(profileId, s.id);
+                  await loadProfile(profileId);
+                }}
               >
-                <span className="min-w-0 truncate">
-                  <span className="text-ink-muted">{s.category}</span>
-                  {s.category ? ' · ' : ''}
-                  {s.name}
-                </span>
-                <button
-                  type="button"
-                  className="rf-btn rf-btn-danger !min-h-8 !px-2.5 !text-xs shrink-0"
-                  onClick={async () => {
-                    await api.deleteSkill(profileId, s.id);
-                    await loadProfile(profileId);
-                  }}
-                >
-                  Remove
-                </button>
-              </li>
+                <div className="flex flex-wrap items-center gap-2">
+                  {s.category && (
+                    <span className="inline-flex items-center rounded-full bg-accent-soft border border-line-accent px-2.5 py-0.5 text-xs font-semibold text-navy">
+                      {s.category}
+                    </span>
+                  )}
+                  <span className="font-medium text-ink">{s.name}</span>
+                </div>
+              </ListRow>
             ))}
           </ul>
         )}
-        <form onSubmit={addSkill} className="grid gap-3 sm:grid-cols-3">
+        <form onSubmit={addSkill} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
           <Field
             label="Category"
             placeholder="Frontend"
             value={skillForm.category}
-            onChange={(e) =>
-              setSkillForm({ ...skillForm, category: e.target.value })
-            }
+            onChange={(e) => setSkillForm({ ...skillForm, category: e.target.value })}
           />
           <Field
             label="Skill name"
             placeholder="React"
             value={skillForm.name}
-            onChange={(e) =>
-              setSkillForm({ ...skillForm, name: e.target.value })
-            }
+            onChange={(e) => setSkillForm({ ...skillForm, name: e.target.value })}
             required
           />
           <div className="flex items-end">
-            <Button type="submit" variant="secondary" className="w-full sm:w-auto">
-              Add skill
+            <Button type="submit" variant="secondary" className="w-full !min-h-11">
+              + Add skill
             </Button>
           </div>
         </form>
-      </Section>
+      </Card>
 
-      <Section title="Experience" eyebrow="Work history">
+      {/* ── Experience ─────────────────────────────────────── */}
+      <Card accent className="rf-enter">
+        <div className="flex items-start gap-3 mb-5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-base border border-line-accent">
+            💼
+          </span>
+          <CardTitle eyebrow="Work history">Experience</CardTitle>
+        </div>
         {experience.length === 0 && <EmptyList label="experience" />}
-        <ul className="mb-4 space-y-3 text-sm">
+        <ul className="mb-5 space-y-2">
           {experience.map((exp) => (
-            <li key={exp.id} className="border-b border-line pb-3">
-              <div className="flex justify-between gap-2">
-                <p className="font-medium">
-                  {exp.role_title} · {exp.company}
-                </p>
-                <button
-                  type="button"
-                  className="rf-btn rf-btn-danger !min-h-8 !px-2.5 !text-xs shrink-0"
-                  onClick={async () => {
-                    await api.deleteExperience(profileId, exp.id);
-                    await loadProfile(profileId);
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-              <p className="text-ink-muted text-xs">
+            <ListRow
+              key={exp.id}
+              onRemove={async () => {
+                await api.deleteExperience(profileId, exp.id);
+                await loadProfile(profileId);
+              }}
+            >
+              <p className="font-bold text-ink">
+                {exp.role_title}
+                <span className="font-medium text-ink-muted"> · {exp.company}</span>
+              </p>
+              <p className="text-xs text-ink-muted mt-0.5">
                 {exp.start_date}
                 {exp.end_date ? ` – ${exp.end_date}` : ' – Present'}
+                {exp.location ? ` · ${exp.location}` : ''}
               </p>
-              <p className="mt-1 whitespace-pre-wrap">{exp.description}</p>
-            </li>
+              {exp.description && (
+                <p className="mt-1.5 text-xs text-ink whitespace-pre-wrap leading-relaxed line-clamp-3">
+                  {exp.description}
+                </p>
+              )}
+            </ListRow>
           ))}
         </ul>
         <form onSubmit={addExp} className="grid gap-3 sm:grid-cols-2">
           <Field
             label="Role title"
             value={expForm.role_title}
-            onChange={(e) =>
-              setExpForm({ ...expForm, role_title: e.target.value })
-            }
+            onChange={(e) => setExpForm({ ...expForm, role_title: e.target.value })}
             required
+            placeholder="Software Engineer"
           />
           <Field
             label="Company"
             value={expForm.company}
-            onChange={(e) =>
-              setExpForm({ ...expForm, company: e.target.value })
-            }
+            onChange={(e) => setExpForm({ ...expForm, company: e.target.value })}
             required
+            placeholder="Acme Corp"
           />
           <Field
             label="Location"
             value={expForm.location}
-            onChange={(e) =>
-              setExpForm({ ...expForm, location: e.target.value })
-            }
+            onChange={(e) => setExpForm({ ...expForm, location: e.target.value })}
+            placeholder="Remote"
           />
           <Field
             label="Start date"
             type="date"
             value={expForm.start_date}
-            onChange={(e) =>
-              setExpForm({ ...expForm, start_date: e.target.value })
-            }
+            onChange={(e) => setExpForm({ ...expForm, start_date: e.target.value })}
           />
           <Field
-            label="End date (leave blank for Present)"
+            label="End date (blank = Present)"
             type="date"
             value={expForm.end_date}
-            onChange={(e) =>
-              setExpForm({ ...expForm, end_date: e.target.value })
-            }
+            onChange={(e) => setExpForm({ ...expForm, end_date: e.target.value })}
           />
           <div className="sm:col-span-2">
             <TextArea
               label="Description / bullet notes"
               value={expForm.description}
-              onChange={(e) =>
-                setExpForm({ ...expForm, description: e.target.value })
-              }
+              onChange={(e) => setExpForm({ ...expForm, description: e.target.value })}
+              placeholder="Key responsibilities and achievements…"
             />
           </div>
-          <button
-            type="submit"
-            className="rf-btn rf-btn-secondary w-fit"
-          >
-            Add experience
-          </button>
+          <div className="sm:col-span-2">
+            <Button type="submit" variant="secondary" className="!min-h-11">
+              + Add experience
+            </Button>
+          </div>
         </form>
-      </Section>
+      </Card>
 
-      <Section title="Projects" eyebrow="Portfolio">
+      {/* ── Projects ───────────────────────────────────────── */}
+      <Card accent className="rf-enter">
+        <div className="flex items-start gap-3 mb-5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-base border border-line-accent">
+            🚀
+          </span>
+          <CardTitle eyebrow="Portfolio">Projects</CardTitle>
+        </div>
         {projects.length === 0 && <EmptyList label="projects" />}
-        <ul className="mb-4 space-y-3 text-sm">
+        <ul className="mb-5 space-y-2">
           {projects.map((p) => (
-            <li key={p.id} className="border-b border-line pb-3">
-              <div className="flex justify-between gap-2">
-                <p className="font-medium">{p.name}</p>
-                <button
-                  type="button"
-                  className="rf-btn rf-btn-danger !min-h-8 !px-2.5 !text-xs shrink-0"
-                  onClick={async () => {
-                    await api.deleteProject(profileId, p.id);
-                    await loadProfile(profileId);
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
+            <ListRow
+              key={p.id}
+              onRemove={async () => {
+                await api.deleteProject(profileId, p.id);
+                await loadProfile(profileId);
+              }}
+            >
+              <p className="font-bold text-ink">{p.name}</p>
               {p.tech_stack?.length > 0 && (
-                <p className="text-xs text-ink-muted">
-                  {p.tech_stack.join(' · ')}
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {p.tech_stack.map((t) => (
+                    <span key={t} className="inline-flex rounded-full bg-surface border border-line px-2 py-0.5 text-xs text-ink-muted">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {p.description && (
+                <p className="mt-1.5 text-xs text-ink whitespace-pre-wrap leading-relaxed line-clamp-2">
+                  {p.description}
                 </p>
               )}
-              <p className="mt-1 whitespace-pre-wrap">{p.description}</p>
-            </li>
+            </ListRow>
           ))}
         </ul>
         <form onSubmit={addProject} className="grid gap-3 sm:grid-cols-2">
           <Field
-            label="Name"
+            label="Project name"
             value={projectForm.name}
-            onChange={(e) =>
-              setProjectForm({ ...projectForm, name: e.target.value })
-            }
+            onChange={(e) => setProjectForm({ ...projectForm, name: e.target.value })}
             required
+            placeholder="My Awesome App"
           />
           <Field
             label="URL"
             value={projectForm.url}
-            onChange={(e) =>
-              setProjectForm({ ...projectForm, url: e.target.value })
-            }
+            onChange={(e) => setProjectForm({ ...projectForm, url: e.target.value })}
+            placeholder="https://example.com"
           />
-          <Field
-            label="Tech stack (comma-separated)"
-            value={projectForm.tech_stack}
-            onChange={(e) =>
-              setProjectForm({ ...projectForm, tech_stack: e.target.value })
-            }
-          />
+          <div className="sm:col-span-2">
+            <Field
+              label="Tech stack (comma-separated)"
+              value={projectForm.tech_stack}
+              onChange={(e) => setProjectForm({ ...projectForm, tech_stack: e.target.value })}
+              placeholder="React, Node.js, PostgreSQL"
+            />
+          </div>
           <div className="sm:col-span-2">
             <TextArea
               label="Description"
               value={projectForm.description}
-              onChange={(e) =>
-                setProjectForm({ ...projectForm, description: e.target.value })
-              }
+              onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })}
+              placeholder="What the project does and your role…"
             />
           </div>
-          <button
-            type="submit"
-            className="rf-btn rf-btn-secondary w-fit"
-          >
-            Add project
-          </button>
+          <div className="sm:col-span-2">
+            <Button type="submit" variant="secondary" className="!min-h-11">
+              + Add project
+            </Button>
+          </div>
         </form>
-      </Section>
+      </Card>
 
-      <Section title="Education" eyebrow="Background">
+      {/* ── Education ──────────────────────────────────────── */}
+      <Card accent className="rf-enter">
+        <div className="flex items-start gap-3 mb-5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-base border border-line-accent">
+            🎓
+          </span>
+          <CardTitle eyebrow="Background">Education</CardTitle>
+        </div>
         {education.length === 0 && <EmptyList label="education" />}
-        <ul className="mb-4 space-y-2 text-sm">
+        <ul className="mb-5 space-y-2">
           {education.map((edu) => (
-            <li
+            <ListRow
               key={edu.id}
-              className="flex justify-between border-b border-line py-2"
+              onRemove={async () => {
+                await api.deleteEducation(profileId, edu.id);
+                await loadProfile(profileId);
+              }}
             >
-              <span>
-                {edu.degree} {edu.field ? `in ${edu.field}` : ''} ·{' '}
+              <p className="font-bold text-ink">
+                {edu.degree}
+                {edu.field ? ` in ${edu.field}` : ''}
+              </p>
+              <p className="text-xs text-ink-muted mt-0.5">
                 {edu.institution}
-              </span>
-              <button
-                type="button"
-                className="rf-btn rf-btn-danger !min-h-8 !px-2.5 !text-xs shrink-0"
-                onClick={async () => {
-                  await api.deleteEducation(profileId, edu.id);
-                  await loadProfile(profileId);
-                }}
-              >
-                Remove
-              </button>
-            </li>
+                {(edu.start_date || edu.end_date) && (
+                  <> · {edu.start_date}{edu.end_date ? ` – ${edu.end_date}` : ''}</>
+                )}
+              </p>
+            </ListRow>
           ))}
         </ul>
         <form onSubmit={addEdu} className="grid gap-3 sm:grid-cols-2">
           <Field
             label="Institution"
             value={eduForm.institution}
-            onChange={(e) =>
-              setEduForm({ ...eduForm, institution: e.target.value })
-            }
+            onChange={(e) => setEduForm({ ...eduForm, institution: e.target.value })}
             required
+            placeholder="University of California, Berkeley"
           />
           <Field
             label="Degree"
             value={eduForm.degree}
-            onChange={(e) =>
-              setEduForm({ ...eduForm, degree: e.target.value })
-            }
+            onChange={(e) => setEduForm({ ...eduForm, degree: e.target.value })}
+            placeholder="B.Sc."
           />
           <Field
-            label="Field"
+            label="Field of study"
             value={eduForm.field}
             onChange={(e) => setEduForm({ ...eduForm, field: e.target.value })}
+            placeholder="Computer Science"
           />
-          <Field
-            label="Start"
-            value={eduForm.start_date}
-            onChange={(e) =>
-              setEduForm({ ...eduForm, start_date: e.target.value })
-            }
-          />
-          <Field
-            label="End"
-            value={eduForm.end_date}
-            onChange={(e) =>
-              setEduForm({ ...eduForm, end_date: e.target.value })
-            }
-          />
-          <button
-            type="submit"
-            className="rf-btn rf-btn-secondary w-fit"
-          >
-            Add education
-          </button>
+          <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-2">
+            <Field
+              label="Start"
+              value={eduForm.start_date}
+              onChange={(e) => setEduForm({ ...eduForm, start_date: e.target.value })}
+              placeholder="2018"
+            />
+            <Field
+              label="End"
+              value={eduForm.end_date}
+              onChange={(e) => setEduForm({ ...eduForm, end_date: e.target.value })}
+              placeholder="2022"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <Button type="submit" variant="secondary" className="!min-h-11">
+              + Add education
+            </Button>
+          </div>
         </form>
-      </Section>
+      </Card>
 
-      <Section title="Certifications" eyebrow="Credentials">
+      {/* ── Certifications ─────────────────────────────────── */}
+      <Card accent className="rf-enter">
+        <div className="flex items-start gap-3 mb-5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-base border border-line-accent">
+            🏆
+          </span>
+          <CardTitle eyebrow="Credentials">Certifications</CardTitle>
+        </div>
         {certifications.length === 0 && <EmptyList label="certifications" />}
-        <ul className="mb-4 space-y-2 text-sm">
+        <ul className="mb-5 space-y-2">
           {certifications.map((c) => (
-            <li
+            <ListRow
               key={c.id}
-              className="flex justify-between border-b border-line py-2"
+              onRemove={async () => {
+                await api.deleteCertification(profileId, c.id);
+                await loadProfile(profileId);
+              }}
             >
-              <span>
-                {c.name} · {c.provider}
-              </span>
-              <button
-                type="button"
-                className="rf-btn rf-btn-danger !min-h-8 !px-2.5 !text-xs shrink-0"
-                onClick={async () => {
-                  await api.deleteCertification(profileId, c.id);
-                  await loadProfile(profileId);
-                }}
-              >
-                Remove
-              </button>
-            </li>
+              <p className="font-bold text-ink">{c.name}</p>
+              <p className="text-xs text-ink-muted mt-0.5">
+                {c.provider}
+                {c.issue_date ? ` · ${c.issue_date}` : ''}
+              </p>
+            </ListRow>
           ))}
         </ul>
         <form onSubmit={addCert} className="grid gap-3 sm:grid-cols-2">
           <Field
-            label="Name"
+            label="Certificate name"
             value={certForm.name}
-            onChange={(e) =>
-              setCertForm({ ...certForm, name: e.target.value })
-            }
+            onChange={(e) => setCertForm({ ...certForm, name: e.target.value })}
             required
+            placeholder="AWS Solutions Architect"
           />
           <Field
             label="Provider"
             value={certForm.provider}
-            onChange={(e) =>
-              setCertForm({ ...certForm, provider: e.target.value })
-            }
+            onChange={(e) => setCertForm({ ...certForm, provider: e.target.value })}
+            placeholder="Amazon Web Services"
           />
           <Field
             label="Issue date"
             value={certForm.issue_date}
-            onChange={(e) =>
-              setCertForm({ ...certForm, issue_date: e.target.value })
-            }
+            onChange={(e) => setCertForm({ ...certForm, issue_date: e.target.value })}
+            placeholder="2023-06"
           />
           <Field
             label="Expiry date"
             value={certForm.expiry_date}
-            onChange={(e) =>
-              setCertForm({ ...certForm, expiry_date: e.target.value })
-            }
+            onChange={(e) => setCertForm({ ...certForm, expiry_date: e.target.value })}
+            placeholder="2026-06"
           />
           <Field
             label="Credential ID"
             value={certForm.credential_id}
-            onChange={(e) =>
-              setCertForm({ ...certForm, credential_id: e.target.value })
-            }
+            onChange={(e) => setCertForm({ ...certForm, credential_id: e.target.value })}
+            placeholder="ABCD-1234"
           />
           <Field
             label="Credential URL"
             value={certForm.credential_url}
-            onChange={(e) =>
-              setCertForm({ ...certForm, credential_url: e.target.value })
-            }
+            onChange={(e) => setCertForm({ ...certForm, credential_url: e.target.value })}
+            placeholder="https://credly.com/…"
           />
-          <button
-            type="submit"
-            className="rf-btn rf-btn-secondary w-fit"
-          >
-            Add certification
-          </button>
+          <div className="sm:col-span-2">
+            <Button type="submit" variant="secondary" className="!min-h-11">
+              + Add certification
+            </Button>
+          </div>
         </form>
-      </Section>
+      </Card>
     </div>
   );
 }
