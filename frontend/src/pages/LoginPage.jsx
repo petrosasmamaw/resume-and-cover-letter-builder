@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { Alert, Button, Card, Field, Logo } from '../components/ui.jsx';
 
 export default function LoginPage() {
   const { login, isAuthenticated, booting } = useAuth();
@@ -27,58 +28,55 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md">
-      <h1 className="font-display text-4xl text-navy">Sign in</h1>
-      <p className="text-ink-muted mt-1 text-sm">
-        Access your profiles, generations, and AI tools.
-      </p>
+    <div className="mx-auto w-full max-w-md rf-enter">
+      <div className="mb-6 text-center sm:text-left">
+        <div className="inline-flex sm:hidden mb-3">
+          <Logo className="h-12 w-12" />
+        </div>
+        <h1 className="rf-page-title">Welcome back</h1>
+        <p className="rf-page-sub">
+          Sign in to access your profile, generations, and AI tools.
+        </p>
+      </div>
 
       {error && (
-        <div className="mt-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
+        <div className="mb-4">
+          <Alert tone="error">{error}</Alert>
         </div>
       )}
 
-      <form
-        onSubmit={onSubmit}
-        className="mt-6 space-y-3 rounded-lg border border-line bg-panel p-5"
-      >
-        <label className="block text-sm">
-          <span className="text-ink-muted mb-1 block">Email</span>
-          <input
+      <Card className="!p-5 sm:!p-6">
+        <form onSubmit={onSubmit} className="space-y-4">
+          <Field
+            label="Email"
             type="email"
             required
-            className="w-full rounded border border-line px-3 py-2 text-sm outline-none focus:border-navy"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
           />
-        </label>
-        <label className="block text-sm">
-          <span className="text-ink-muted mb-1 block">Password</span>
-          <input
+          <Field
+            label="Password"
             type="password"
             required
             minLength={8}
-            className="w-full rounded border border-line px-3 py-2 text-sm outline-none focus:border-navy"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
           />
-        </label>
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded bg-navy px-4 py-2.5 text-sm font-medium text-white hover:bg-navy-light disabled:opacity-60"
-        >
-          {loading ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
+          <Button type="submit" className="w-full" loading={loading}>
+            {loading ? 'Signing in…' : 'Sign in'}
+          </Button>
+        </form>
+      </Card>
 
-      <p className="mt-4 text-sm text-ink-muted">
+      <p className="mt-5 text-center sm:text-left text-sm text-ink-muted">
         No account?{' '}
-        <Link to="/signup" className="text-accent underline">
-          Sign up
+        <Link
+          to="/signup"
+          className="font-semibold text-navy underline decoration-accent/50 underline-offset-2 hover:decoration-accent"
+        >
+          Create one
         </Link>
       </p>
     </div>

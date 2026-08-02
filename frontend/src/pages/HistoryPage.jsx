@@ -4,6 +4,13 @@ import { api, getStoredProfileId } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import ResumePreview from '../components/ResumePreview.jsx';
 import { RequirementMatch } from '../components/RequirementMatch.jsx';
+import {
+  Alert,
+  Button,
+  EmptyState,
+  LoadingState,
+  PageHeader,
+} from '../components/ui.jsx';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -74,91 +81,90 @@ export default function HistoryPage() {
 
   if (!profileId) {
     return (
-      <div className="rounded-lg border border-line bg-panel p-6">
-        <h1 className="font-display text-3xl text-navy">History</h1>
-        <p className="mt-2 text-ink-muted">
-          No profile yet.{' '}
-          <Link to="/" className="text-accent underline">
-            Create one
+      <EmptyState
+        title="No profile yet"
+        description="Create your profile first so History can load past applications."
+        action={
+          <Link to="/" className="rf-btn rf-btn-primary">
+            Create profile
           </Link>
-          .
-        </p>
-      </div>
+        }
+      />
     );
   }
 
-  if (loading) {
-    return <p className="text-ink-muted">Loading history…</p>;
-  }
+  if (loading) return <LoadingState label="Loading history…" />;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-4xl text-navy">History</h1>
-        <p className="text-ink-muted mt-1">
-          Past applications — reopen, re-download the resume PDF, or copy the
-          cover letter.
-        </p>
-      </div>
+    <div className="space-y-5 sm:space-y-6 rf-stagger">
+      <PageHeader
+        title="History"
+        subtitle="Reopen past applications, download PDFs, or copy cover letters."
+      />
 
-      {error && (
-        <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
-        </div>
-      )}
+      {error && <Alert tone="error">{error}</Alert>}
 
       {items.length === 0 ? (
-        <div className="rounded-lg border border-line bg-panel p-6 text-ink-muted">
-          No generations yet.{' '}
-          <Link to="/generate" className="text-accent underline">
-            Generate your first application
-          </Link>
-          .
-        </div>
+        <EmptyState
+          title="No generations yet"
+          description="Once you generate a resume or cover letter, it will show up here."
+          action={
+            <Link to="/generate" className="rf-btn rf-btn-accent">
+              Generate your first application
+            </Link>
+          }
+        />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-          <ul className="space-y-2">
-            {items.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => setSelected(item)}
-                  className={`w-full text-left rounded-lg border px-3 py-3 transition-colors ${
-                    selected?.id === item.id
-                      ? 'border-navy bg-navy/5'
-                      : 'border-line bg-panel hover:border-navy/40'
-                  }`}
-                >
-                  <p className="font-medium text-sm text-ink">
-                    {item.job_title}
-                  </p>
-                  <p className="text-xs text-ink-muted">{item.company_name}</p>
-                  <p className="text-[11px] text-ink-muted mt-1">
-                    {new Date(item.created_at).toLocaleString()}
-                  </p>
-                </button>
-              </li>
-            ))}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,280px)_1fr] lg:gap-6">
+          <ul className="space-y-2 max-h-[40vh] lg:max-h-[70vh] overflow-y-auto pr-1">
+            {items.map((item) => {
+              const active = selected?.id === item.id;
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSelected(item)}
+                    className={`w-full text-left rounded-[var(--radius-md)] border px-3.5 py-3 transition-all ${
+                      active
+                        ? 'border-navy bg-accent-soft shadow-soft'
+                        : 'border-line bg-panel hover:border-accent/50 hover:shadow-soft'
+                    }`}
+                  >
+                    <p className="font-semibold text-sm text-ink truncate">
+                      {item.job_title}
+                    </p>
+                    <p className="text-xs text-ink-muted truncate">
+                      {item.company_name}
+                    </p>
+                    <p className="text-[11px] text-ink-muted mt-1.5">
+                      {new Date(item.created_at).toLocaleString()}
+                    </p>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
 
-          <div>
+          <div className="min-w-0">
             {!selected ? (
-              <p className="text-ink-muted text-sm">
-                Select a generation to preview.
-              </p>
+              <div className="rf-card p-8 text-center text-sm text-ink-muted">
+                Select a generation to preview details.
+              </div>
             ) : (
-              <div className="space-y-5">
-                <div className="flex flex-wrap items-center gap-2">
+              <div className="space-y-4 rf-enter">
+                <div className="rf-card p-4 flex flex-wrap items-center gap-2">
                   <Link
                     to={`/generate?generation=${selected.id}`}
-                    className="rounded border border-navy px-3 py-1.5 text-sm text-navy hover:bg-navy hover:text-white"
+                    className="rf-btn rf-btn-secondary !min-h-9 !text-xs"
                   >
                     Open in Generate
                   </Link>
                   {selected.generated_resume_json && (
-                    <button
+                    <Button
                       type="button"
-                      disabled={pdfLoading}
+                      variant="accent"
+                      className="!min-h-9 !text-xs"
+                      loading={pdfLoading}
                       onClick={() =>
                         handlePdf(
                           selected.id,
@@ -166,21 +172,21 @@ export default function HistoryPage() {
                           selected.resume_template || 'color'
                         )
                       }
-                      className="rounded bg-accent px-3 py-1.5 text-sm text-white hover:opacity-90 disabled:opacity-60"
                     >
-                      {pdfLoading ? 'Building PDF…' : 'Download Resume PDF'}
-                    </button>
+                      {pdfLoading ? 'Building PDF…' : 'Download PDF'}
+                    </Button>
                   )}
                   {selected.generated_cover_letter && (
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      className="!min-h-9 !text-xs"
                       onClick={() =>
                         copyLetter(selected.generated_cover_letter)
                       }
-                      className="rounded border border-line px-3 py-1.5 text-sm hover:border-navy"
                     >
                       {copied ? 'Copied!' : 'Copy cover letter'}
-                    </button>
+                    </Button>
                   )}
                 </div>
 
@@ -199,14 +205,14 @@ export default function HistoryPage() {
                 )}
 
                 {selected.generated_cover_letter && (
-                  <section>
-                    <h3 className="text-sm font-semibold text-navy mb-2">
+                  <section className="rf-card p-4 sm:p-5">
+                    <h3 className="text-sm font-semibold text-navy mb-3">
                       Cover letter
                     </h3>
                     <textarea
                       readOnly
                       value={selected.generated_cover_letter || ''}
-                      className="w-full min-h-[200px] rounded border border-line bg-white px-4 py-3 text-sm"
+                      className="rf-input min-h-[200px] leading-relaxed"
                     />
                   </section>
                 )}

@@ -4,6 +4,15 @@ import {
   setStoredProfileId,
 } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
+import {
+  Alert,
+  Button,
+  Card,
+  CardTitle,
+  Field,
+  LoadingState,
+  PageHeader,
+} from '../components/ui.jsx';
 
 const emptyCore = {
   full_name: '',
@@ -17,36 +26,24 @@ const emptyCore = {
   summary: '',
 };
 
-function Section({ title, children }) {
+function Section({ title, eyebrow, children }) {
   return (
-    <section className="rounded-lg border border-line bg-panel p-5">
-      <h2 className="text-lg font-semibold text-navy mb-4">{title}</h2>
+    <Card className="rf-enter">
+      <CardTitle eyebrow={eyebrow}>{title}</CardTitle>
       {children}
-    </section>
-  );
-}
-
-function Field({ label, ...props }) {
-  return (
-    <label className="block text-sm">
-      <span className="text-ink-muted mb-1 block">{label}</span>
-      <input
-        className="w-full rounded border border-line bg-white px-3 py-2 text-sm outline-none focus:border-navy"
-        {...props}
-      />
-    </label>
+    </Card>
   );
 }
 
 function TextArea({ label, ...props }) {
+  return <Field label={label} as="textarea" className="min-h-[88px]" {...props} />;
+}
+
+function EmptyList({ label }) {
   return (
-    <label className="block text-sm">
-      <span className="text-ink-muted mb-1 block">{label}</span>
-      <textarea
-        className="w-full rounded border border-line bg-white px-3 py-2 text-sm outline-none focus:border-navy min-h-[88px]"
-        {...props}
-      />
-    </label>
+    <p className="mb-4 rounded-[var(--radius-md)] border border-dashed border-line bg-surface/60 px-3 py-4 text-sm text-ink-muted">
+      No {label} yet — add your first below.
+    </p>
   );
 }
 
@@ -329,58 +326,46 @@ export default function ProfilePage() {
   }
 
   if (loading) {
-    return <p className="text-ink-muted">Loading profile…</p>;
+    return <LoadingState label="Loading profile…" />;
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-4xl text-navy">Your profile</h1>
-        <p className="text-ink-muted mt-1 max-w-2xl">
-          Fill this once. Generations pull from this data — Gemini will only
-          rephrase and reorder what you enter here.
-        </p>
-      </div>
+    <div className="space-y-4 sm:space-y-5 rf-stagger">
+      <PageHeader
+        title="Your profile"
+        subtitle="Fill this once. Generations pull from this data — Gemini only rephrases and reorders what you enter here."
+      />
 
-      {error && (
-        <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
-        </div>
-      )}
-      {status && (
-        <div className="rounded border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-900">
-          {status}
-        </div>
-      )}
+      {error && <Alert tone="error">{error}</Alert>}
+      {status && <Alert tone="success">{status}</Alert>}
 
-      <Section title="Fill with AI">
-        <p className="text-sm text-ink-muted mb-3">
-          Paste a CV, LinkedIn export, or notes. AI classifies fields and merges
-          with your existing profile: duplicates are skipped, only new items are
-          added. Empty core fields (name, email, etc.) get filled; values you
-          already saved are kept.
+      <Section title="Fill with AI" eyebrow="Fast start">
+        <p className="text-sm text-ink-muted mb-3 leading-relaxed">
+          Paste a CV, LinkedIn export, or notes. AI merges into your existing
+          profile: duplicates are skipped, only new items are added.
         </p>
         <form onSubmit={fillWithAi} className="space-y-3">
           <textarea
-            className="w-full min-h-[160px] rounded border border-line bg-white px-3 py-2 text-sm outline-none focus:border-navy"
+            className="rf-input min-h-[160px]"
             placeholder="Paste new or extra profile info here…"
             value={pasteText}
             onChange={(e) => setPasteText(e.target.value)}
             disabled={aiParsing}
           />
-          <button
+          <Button
             type="submit"
+            variant="accent"
+            loading={aiParsing}
             disabled={aiParsing || !pasteText.trim()}
-            className="rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
           >
             {aiParsing
               ? 'Classifying & merging…'
               : 'Classify & merge into profile'}
-          </button>
+          </Button>
         </form>
       </Section>
 
-      <Section title="Core details">
+      <Section title="Core details" eyebrow="Identity">
         <form onSubmit={saveCore} className="grid gap-3 sm:grid-cols-2">
           <Field
             label="Full name"
@@ -434,41 +419,42 @@ export default function ProfilePage() {
             />
           </div>
           <div className="sm:col-span-2">
-            <button
-              type="submit"
-              className="rounded bg-navy px-4 py-2 text-sm font-medium text-white hover:bg-navy-light"
-            >
+            <Button type="submit">
               {profileId ? 'Save profile' : 'Create profile'}
-            </button>
+            </Button>
           </div>
         </form>
       </Section>
 
-      <Section title="Skills">
-        <ul className="mb-4 space-y-1 text-sm">
-          {skills.map((s) => (
-            <li
-              key={s.id}
-              className="flex items-center justify-between border-b border-line py-2"
-            >
-              <span>
-                <span className="text-ink-muted">{s.category}</span>
-                {s.category ? ' · ' : ''}
-                {s.name}
-              </span>
-              <button
-                type="button"
-                className="text-xs text-red-600 hover:underline"
-                onClick={async () => {
-                  await api.deleteSkill(profileId, s.id);
-                  await loadProfile(profileId);
-                }}
+      <Section title="Skills" eyebrow="Capabilities">
+        {skills.length === 0 ? (
+          <EmptyList label="skills" />
+        ) : (
+          <ul className="mb-4 space-y-1 text-sm">
+            {skills.map((s) => (
+              <li
+                key={s.id}
+                className="flex items-center justify-between gap-3 border-b border-line py-2.5"
               >
-                Remove
-              </button>
-            </li>
-          ))}
-        </ul>
+                <span className="min-w-0 truncate">
+                  <span className="text-ink-muted">{s.category}</span>
+                  {s.category ? ' · ' : ''}
+                  {s.name}
+                </span>
+                <button
+                  type="button"
+                  className="rf-btn rf-btn-danger !min-h-8 !px-2.5 !text-xs shrink-0"
+                  onClick={async () => {
+                    await api.deleteSkill(profileId, s.id);
+                    await loadProfile(profileId);
+                  }}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         <form onSubmit={addSkill} className="grid gap-3 sm:grid-cols-3">
           <Field
             label="Category"
@@ -488,17 +474,15 @@ export default function ProfilePage() {
             required
           />
           <div className="flex items-end">
-            <button
-              type="submit"
-              className="rounded border border-navy px-4 py-2 text-sm text-navy hover:bg-navy hover:text-white"
-            >
+            <Button type="submit" variant="secondary" className="w-full sm:w-auto">
               Add skill
-            </button>
+            </Button>
           </div>
         </form>
       </Section>
 
-      <Section title="Experience">
+      <Section title="Experience" eyebrow="Work history">
+        {experience.length === 0 && <EmptyList label="experience" />}
         <ul className="mb-4 space-y-3 text-sm">
           {experience.map((exp) => (
             <li key={exp.id} className="border-b border-line pb-3">
@@ -508,7 +492,7 @@ export default function ProfilePage() {
                 </p>
                 <button
                   type="button"
-                  className="text-xs text-red-600 hover:underline"
+                  className="rf-btn rf-btn-danger !min-h-8 !px-2.5 !text-xs shrink-0"
                   onClick={async () => {
                     await api.deleteExperience(profileId, exp.id);
                     await loadProfile(profileId);
@@ -576,14 +560,15 @@ export default function ProfilePage() {
           </div>
           <button
             type="submit"
-            className="rounded border border-navy px-4 py-2 text-sm text-navy hover:bg-navy hover:text-white w-fit"
+            className="rf-btn rf-btn-secondary w-fit"
           >
             Add experience
           </button>
         </form>
       </Section>
 
-      <Section title="Projects">
+      <Section title="Projects" eyebrow="Portfolio">
+        {projects.length === 0 && <EmptyList label="projects" />}
         <ul className="mb-4 space-y-3 text-sm">
           {projects.map((p) => (
             <li key={p.id} className="border-b border-line pb-3">
@@ -591,7 +576,7 @@ export default function ProfilePage() {
                 <p className="font-medium">{p.name}</p>
                 <button
                   type="button"
-                  className="text-xs text-red-600 hover:underline"
+                  className="rf-btn rf-btn-danger !min-h-8 !px-2.5 !text-xs shrink-0"
                   onClick={async () => {
                     await api.deleteProject(profileId, p.id);
                     await loadProfile(profileId);
@@ -643,14 +628,15 @@ export default function ProfilePage() {
           </div>
           <button
             type="submit"
-            className="rounded border border-navy px-4 py-2 text-sm text-navy hover:bg-navy hover:text-white w-fit"
+            className="rf-btn rf-btn-secondary w-fit"
           >
             Add project
           </button>
         </form>
       </Section>
 
-      <Section title="Education">
+      <Section title="Education" eyebrow="Background">
+        {education.length === 0 && <EmptyList label="education" />}
         <ul className="mb-4 space-y-2 text-sm">
           {education.map((edu) => (
             <li
@@ -663,7 +649,7 @@ export default function ProfilePage() {
               </span>
               <button
                 type="button"
-                className="text-xs text-red-600 hover:underline"
+                className="rf-btn rf-btn-danger !min-h-8 !px-2.5 !text-xs shrink-0"
                 onClick={async () => {
                   await api.deleteEducation(profileId, edu.id);
                   await loadProfile(profileId);
@@ -711,14 +697,15 @@ export default function ProfilePage() {
           />
           <button
             type="submit"
-            className="rounded border border-navy px-4 py-2 text-sm text-navy hover:bg-navy hover:text-white w-fit"
+            className="rf-btn rf-btn-secondary w-fit"
           >
             Add education
           </button>
         </form>
       </Section>
 
-      <Section title="Certifications">
+      <Section title="Certifications" eyebrow="Credentials">
+        {certifications.length === 0 && <EmptyList label="certifications" />}
         <ul className="mb-4 space-y-2 text-sm">
           {certifications.map((c) => (
             <li
@@ -730,7 +717,7 @@ export default function ProfilePage() {
               </span>
               <button
                 type="button"
-                className="text-xs text-red-600 hover:underline"
+                className="rf-btn rf-btn-danger !min-h-8 !px-2.5 !text-xs shrink-0"
                 onClick={async () => {
                   await api.deleteCertification(profileId, c.id);
                   await loadProfile(profileId);
@@ -787,7 +774,7 @@ export default function ProfilePage() {
           />
           <button
             type="submit"
-            className="rounded border border-navy px-4 py-2 text-sm text-navy hover:bg-navy hover:text-white w-fit"
+            className="rf-btn rf-btn-secondary w-fit"
           >
             Add certification
           </button>

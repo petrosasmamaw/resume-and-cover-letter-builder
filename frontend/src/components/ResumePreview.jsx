@@ -37,7 +37,7 @@ function ModernPreview({ resume, profile }) {
   const skillGroups = normalizeSkillGroups(resume.skills);
 
   return (
-    <div className="overflow-hidden rounded-lg border border-line shadow-sm bg-white text-[11px] leading-snug text-slate-800">
+    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-line shadow-[var(--shadow-soft)] bg-white text-[11px] leading-snug text-slate-800">
       <div className="px-8 py-6 min-h-[520px]">
         <header className="mb-3">
           <h2 className="text-xl font-extrabold tracking-wide text-navy">
@@ -205,7 +205,7 @@ function SimplePreview({ resume, profile }) {
   const awards = Array.isArray(resume.achievements) ? resume.achievements : [];
 
   return (
-    <div className="overflow-hidden rounded-lg border border-line shadow-sm bg-white text-[11px] leading-[1.45] text-slate-900">
+    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-line shadow-[var(--shadow-soft)] bg-white text-[11px] leading-[1.45] text-slate-900">
       <div className="px-8 py-6 min-h-[520px]">
         <header className="mb-3">
           <h2 className="text-[30px] font-bold leading-tight text-slate-900">
