@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: resumeforge-api
+    env: node
+    buildCommand: npm run install:all && npm run build --prefix frontend && npm run migrate --prefix backend
+    startCommand: npm run start --prefix backend
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.1-pro-preview
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true

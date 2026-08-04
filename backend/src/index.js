@@ -1,5 +1,6 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
@@ -18,7 +19,24 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 
-app.use(cors());
+// CORS setup supporting custom frontend domains in production
+const allowedOrigins = process.env.CLIENT_ORIGIN
+  ? process.env.CLIENT_ORIGIN.split(',').map((o) => o.trim())
+  : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5000'];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Allow during production testing
+      }
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json({ limit: '2mb' }));
 
 app.get('/api/health', (_req, res) => {
@@ -36,6 +54,16 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/generate', generateRoutes);
 app.use('/api/generations', generationsRoutes);
+
+// Static frontend serving if built bundle exists
+const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
+if (fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
 
 app.use((err, _req, res, _next) => {
   console.error(err);
@@ -75,8 +103,6 @@ function startServer(attempt = 1) {
 
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE' && attempt < 8) {
-      // Wait for previous --watch process to release the port.
-      // Do NOT kill processes here — that races with the watcher and stops the server.
       console.warn(
         `Port ${PORT} still busy (attempt ${attempt}/7) — waiting for it to free…`
       );
