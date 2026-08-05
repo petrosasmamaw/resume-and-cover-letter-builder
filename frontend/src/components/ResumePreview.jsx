@@ -32,7 +32,7 @@ function ModernPreview({ resume, profile, includeContact = true }) {
         profile?.github_url,
         profile?.portfolio_url,
       ]
-    : [profile?.linkedin_url, profile?.github_url, profile?.portfolio_url];
+    : [];
   const contact = contactParts.filter(Boolean).join(' | ');
 
   const skillGroups = normalizeSkillGroups(resume.skills);
@@ -200,7 +200,7 @@ function SimplePreview({ resume, profile, includeContact = true }) {
         profile?.github_url,
         profile?.linkedin_url,
       ]
-    : [profile?.portfolio_url, profile?.github_url, profile?.linkedin_url];
+    : [];
   const contact = contactParts.filter(Boolean).join(' | ');
 
   const skillGroups = normalizeSkillGroups(resume.skills);

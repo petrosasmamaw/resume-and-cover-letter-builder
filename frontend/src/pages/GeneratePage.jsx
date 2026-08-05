@@ -61,12 +61,12 @@ const CONTACT_MODES = [
   {
     id: 'with',
     label: 'With contact',
-    hint: 'Shows email, phone, and address in the header',
+    hint: 'Email, phone, address & links — for company / email applications',
   },
   {
     id: 'without',
-    label: 'Without contact',
-    hint: 'Hides email, phone & address — keeps LinkedIn/GitHub/portfolio',
+    label: 'Upwork-safe (no contact)',
+    hint: 'Hides all contact channels so your proposal is less likely to get banned',
   },
 ];
 
@@ -487,19 +487,30 @@ export default function GeneratePage() {
             </div>
           )}
 
-          {/* Contact details on resume */}
+          {/* Contact details — With contact vs Upwork-safe */}
           {wantsResume && (
             <div>
-              <p className="text-sm font-bold text-ink mb-3">Contact on resume</p>
+              <p className="text-sm font-bold text-ink mb-1">Contact on resume</p>
+              <p className="text-xs text-ink-muted mb-3 leading-relaxed">
+                Upwork and similar platforms can ban proposals that share email,
+                phone, LinkedIn, or other ways to contact you outside the site.
+                Use <span className="font-semibold text-navy">Upwork-safe</span>{' '}
+                when applying there — your skills, experience, and projects stay;
+                contact details do not.
+              </p>
               <ChoiceCards
                 options={CONTACT_MODES}
                 value={includeContact ? 'with' : 'without'}
                 onChange={(id) => setIncludeContact(id === 'with')}
               />
-              <p className="mt-2 text-xs text-ink-muted leading-relaxed">
+              <p
+                className={`mt-2 text-xs leading-relaxed ${
+                  includeContact ? 'text-ink-muted' : 'text-navy font-medium'
+                }`}
+              >
                 {includeContact
-                  ? 'Header will include email, phone, and address along with your links.'
-                  : 'Private details stay off the PDF — only public links remain if set on your profile.'}
+                  ? 'Header includes email, phone, address, LinkedIn, GitHub, and portfolio.'
+                  : 'Upwork-safe: no email, phone, address, or profile links — only name, title, and work content.'}
               </p>
             </div>
           )}
@@ -615,7 +626,7 @@ export default function GeneratePage() {
                       {TEMPLATES.find((t) => t.id === resumeTemplate)?.label || resumeTemplate}
                     </span>
                     {' · '}
-                    {includeContact ? 'With contact' : 'Without contact'}
+                    {includeContact ? 'With contact' : 'Upwork-safe'}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -635,11 +646,11 @@ export default function GeneratePage() {
                     type="button"
                     onClick={() => setIncludeContact((v) => !v)}
                     className={`rf-btn !min-h-9 !px-3 !text-xs !rounded-lg ${
-                      includeContact ? 'rf-btn-secondary' : 'rf-btn-ghost'
+                      includeContact ? 'rf-btn-secondary' : 'rf-btn-primary'
                     }`}
-                    title="Toggle email, phone, and address on the resume"
+                    title="Toggle contact details for Upwork vs normal applications"
                   >
-                    {includeContact ? 'Contact on' : 'Contact off'}
+                    {includeContact ? 'With contact' : 'Upwork-safe'}
                   </button>
                   <Button
                     type="button"

@@ -50,7 +50,8 @@ export function renderResumeHtml(resume, profile = {}, options = {}) {
   const name = escapeHtml(profile.full_name || resume.name || 'Candidate');
   const headline = escapeHtml(resume.headline || profile.title || '');
 
-  // With contact: private details + links. Without: links only (no email/phone/address).
+  // With contact: private details + links (standard applications).
+  // Without contact / Upwork-safe: no email, phone, address, or profile links.
   const contactParts = includeContact
     ? [
         profile.email,
@@ -60,7 +61,7 @@ export function renderResumeHtml(resume, profile = {}, options = {}) {
         profile.github_url,
         profile.portfolio_url,
       ]
-    : [profile.linkedin_url, profile.github_url, profile.portfolio_url];
+    : [];
 
   const contact = contactParts.filter(Boolean).map(escapeHtml).join(' | ');
 

@@ -43,6 +43,7 @@ export function renderSimpleResumeHtml(resume, profile = {}, options = {}) {
   const name = escapeHtml(profile.full_name || resume.name || 'Candidate');
   const headline = escapeHtml(resume.headline || profile.title || '');
 
+  // With contact: standard job applications. Without: Upwork-safe (no contact channels).
   const contactParts = includeContact
     ? [
         profile.email,
@@ -52,7 +53,7 @@ export function renderSimpleResumeHtml(resume, profile = {}, options = {}) {
         profile.github_url,
         profile.linkedin_url,
       ]
-    : [profile.portfolio_url, profile.github_url, profile.linkedin_url];
+    : [];
 
   const contact = contactParts.filter(Boolean).map(escapeHtml).join(' | ');
 
