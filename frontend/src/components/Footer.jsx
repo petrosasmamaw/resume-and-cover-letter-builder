@@ -42,6 +42,11 @@ export default function Footer() {
                 </NavLink>
               </li>
               <li>
+                <NavLink to="/chat" className="hover:text-navy transition-colors">
+                  Career Chat
+                </NavLink>
+              </li>
+              <li>
                 <NavLink to="/history" className="hover:text-navy transition-colors">
                   Generation History
                 </NavLink>

@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import GeneratePage from './pages/GeneratePage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
+import ChatPage from './pages/ChatPage.jsx';
 import FAQPage from './pages/FAQPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
@@ -91,6 +92,27 @@ function IconHistoryNav({ active }) {
   );
 }
 
+function IconChatNav({ active }) {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+      className="transition-transform duration-150"
+      style={{ transform: active ? 'scale(1.1)' : 'scale(1)' }}
+    >
+      <path
+        d="M5 6.5A2.5 2.5 0 017.5 4h9A2.5 2.5 0 0119 6.5v7a2.5 2.5 0 01-2.5 2.5H11l-3.5 3v-3H7.5A2.5 2.5 0 015 13.5v-7z"
+        stroke="currentColor"
+        strokeWidth={active ? '2.2' : '1.8'}
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /* ── User Avatar Pill ──────────────────────────────────── */
 function UserPill({ email, onLogout }) {
   const initials = email ? email[0].toUpperCase() : '?';
@@ -168,6 +190,9 @@ function Shell() {
                   <NavLink to="/generate" className={navClass}>
                     Generate
                   </NavLink>
+                  <NavLink to="/chat" className={navClass}>
+                    Chat
+                  </NavLink>
                   <NavLink to="/history" className={navClass}>
                     History
                   </NavLink>
@@ -240,6 +265,14 @@ function Shell() {
               </Protected>
             }
           />
+          <Route
+            path="/chat"
+            element={
+              <Protected>
+                <ChatPage />
+              </Protected>
+            }
+          />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
@@ -288,6 +321,19 @@ function Shell() {
                       <IconGenerateNav active={isActive} />
                     </div>
                     <span>Generate</span>
+                  </>
+                )}
+              </NavLink>
+
+              <NavLink to="/chat" className={mobileNavClass}>
+                {({ isActive }) => (
+                  <>
+                    <div className={`relative flex items-center justify-center w-8 h-6 rounded-lg transition-all duration-150 ${
+                      isActive ? 'bg-accent-soft' : ''
+                    }`}>
+                      <IconChatNav active={isActive} />
+                    </div>
+                    <span>Chat</span>
                   </>
                 )}
               </NavLink>

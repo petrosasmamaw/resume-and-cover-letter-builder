@@ -260,3 +260,109 @@ async function generateWithModelFallback(genAI, { systemInstruction, prompt }) {
     return result.response.text();
   }
 }
+
+/**
+ * Multi-turn career / job-description coach chat.
+ * messages: [{ role: 'user' | 'assistant', content: string }] — last must be user.
+ */
+export async function chatCareerCoach({
+  messages,
+  profile = null,
+  jobTitle = '',
+  companyName = '',
+  jobDescription = '',
+}) {
+  if (isPlaceholderGeminiKey()) {
+    const err = new Error(
+      'GEMINI_API_KEY is still the placeholder. Replace it in backend/.env with your real key from https://aistudio.google.com/apikey'
+    );
+    err.code = 'PLACEHOLDER_KEY';
+    throw err;
+  }
+
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+  const contextBits = [];
+  if (profile) {
+    contextBits.push(`CANDIDATE PROFILE (facts — do not invent beyond this):\n${JSON.stringify(profile)}`);
+  }
+  if (jobTitle || companyName || jobDescription) {
+    contextBits.push(`ACTIVE JOB CONTEXT:
+Title: ${jobTitle || '(not set)'}
+Company: ${companyName || '(not set)'}
+Description:
+${jobDescription || '(not set)'}`);
+  }
+
+  const systemInstruction = `You are ResumeForge Career Coach — a practical advisor for job applications, resumes, and cover letters.
+
+Your job:
+- Help the user understand job descriptions (requirements, must-haves vs nice-to-haves, red flags, seniority).
+- Coach on how their profile fits a role and what to emphasize or leave out.
+- Suggest talk tracks, interview angles, and special notes they could use when generating a resume/cover letter in ResumeForge.
+- Stay concise and actionable. Use short paragraphs or bullets. Avoid AI fluff words.
+
+Rules:
+- Do not invent employers, metrics, degrees, or skills not present in the candidate profile or clearly stated by the user.
+- If profile/job context is missing, ask for what’s needed or give general advice.
+- You are not generating the final resume PDF here — guide them; they use Generate for documents.
+- Plain helpful prose only (no JSON unless the user asks for structured notes).
+
+${contextBits.length ? `\nCONTEXT FOR THIS CHAT:\n${contextBits.join('\n\n')}` : ''}`;
+
+  const normalized = [];
+  for (const m of messages) {
+    const role = m.role === 'assistant' || m.role === 'model' ? 'model' : 'user';
+    const content = String(m.content || '').trim();
+    if (!content) continue;
+    if (normalized.length && normalized[normalized.length - 1].role === role) {
+      normalized[normalized.length - 1].content += `\n\n${content}`;
+    } else {
+      normalized.push({ role, content });
+    }
+  }
+
+  if (!normalized.length || normalized[normalized.length - 1].role !== 'user') {
+    const err = new Error('Last chat message must be from the user');
+    err.code = 'INVALID_CHAT';
+    throw err;
+  }
+
+  // Gemini chat history cannot start with a model turn
+  while (normalized.length && normalized[0].role === 'model') {
+    normalized.shift();
+  }
+
+  const lastUser = normalized[normalized.length - 1].content;
+  const history = normalized.slice(0, -1).map((m) => ({
+    role: m.role,
+    parts: [{ text: m.content }],
+  }));
+
+  return chatWithModelFallback(genAI, {
+    systemInstruction,
+    history,
+    message: lastUser,
+  });
+}
+
+async function chatWithModelFallback(genAI, { systemInstruction, history, message }) {
+  async function run(modelName) {
+    const model = genAI.getGenerativeModel({
+      model: modelName,
+      systemInstruction,
+    });
+    const chat = model.startChat({ history });
+    const result = await chat.sendMessage(message);
+    return result.response.text();
+  }
+
+  try {
+    return await run(PRIMARY_MODEL);
+  } catch (error) {
+    if (!shouldFallbackModel(error) || PRIMARY_MODEL === FALLBACK_MODEL) {
+      throw error;
+    }
+    return run(FALLBACK_MODEL);
+  }
+}

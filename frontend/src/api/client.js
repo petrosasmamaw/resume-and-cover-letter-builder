@@ -170,4 +170,6 @@ export const api = {
   listGenerations: (profileId) =>
     request(`/api/generations/${profileId}`),
   getGeneration: (id) => request(`/api/generations/item/${id}`),
+  chat: (body) =>
+    request('/api/chat', { method: 'POST', body: JSON.stringify(body) }),
 };

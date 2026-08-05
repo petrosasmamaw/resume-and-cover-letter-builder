@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.js';
 import profileRoutes from './routes/profile.js';
 import generateRoutes from './routes/generate.js';
 import generationsRoutes from './routes/generations.js';
+import chatRoutes from './routes/chat.js';
 import { isPlaceholderDb } from './db/pool.js';
 import { isPlaceholderGeminiKey } from './services/gemini.js';
 import { isPlaceholderJwt } from './middleware/auth.js';
@@ -54,6 +55,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/generate', generateRoutes);
 app.use('/api/generations', generationsRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Static frontend serving if built bundle exists
 const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
