@@ -96,6 +96,7 @@ ALTER TABLE generations ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(i
 ALTER TABLE generations ADD COLUMN IF NOT EXISTS output_mode TEXT DEFAULT 'both';
 ALTER TABLE generations ADD COLUMN IF NOT EXISTS resume_template TEXT DEFAULT 'color';
 ALTER TABLE generations ADD COLUMN IF NOT EXISTS include_contact BOOLEAN DEFAULT TRUE;
+ALTER TABLE generations ADD COLUMN IF NOT EXISTS special_notes TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_skills_profile ON skills(profile_id);
 CREATE INDEX IF NOT EXISTS idx_experience_profile ON experience(profile_id);

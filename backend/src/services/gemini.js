@@ -17,6 +17,7 @@ export async function generateApplication({
   companyName,
   coverLetterLength,
   outputMode = 'both',
+  specialNotes = '',
 }) {
   if (isPlaceholderGeminiKey()) {
     const err = new Error(
@@ -28,6 +29,7 @@ export async function generateApplication({
 
   const wantResume = outputMode === 'both' || outputMode === 'resume';
   const wantCover = outputMode === 'both' || outputMode === 'cover_letter';
+  const notes = String(specialNotes || '').trim();
 
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   const systemInstruction = `You are an expert executive resume writer and career coach. You write sharp, impact-driven resume content and cover letters that sound genuinely written by a human professional, NOT an AI.
@@ -38,7 +40,7 @@ STRICT WRITING RULES:
 3. Use the XYZ format for bullets where possible: "Accomplished [X], measured by [Y], by doing [Z]" — e.g. "Cut receipt-verification time from minutes to seconds by building an OCR/QR pipeline for Tamagn Check, now used by [N] verifications/month."
 4. Vary sentence structure and length naturally — mix short punchy stats with slightly longer descriptive lines, the way a real person writing about their own work does. Do not make every bullet the same length or shape.
 5. Keep tone professional, direct, and active. No poetic or overly formal phrasing.
-6. Never invent skills, employers, dates, metrics, or achievements that are not present in the candidate profile data you're given — only rephrase and reorder what's real.`;
+6. Ground truth is the candidate profile PLUS any SPECIAL NOTES for this application. Prefer profile facts; if SPECIAL NOTES add or prioritize specific skills/experience for this one generation, follow them. Do not invent unrelated employers, fake metrics, or skills that are neither in the profile nor clearly stated in SPECIAL NOTES.`;
 
   const tasks = [];
   if (wantResume) {
@@ -47,7 +49,8 @@ STRICT WRITING RULES:
 2. For each major requirement, find the candidate's closest real match from the profile data (exact tech match first, closest equivalent skill/experience second) and make sure that match is visible in the resume — don't just list skills, connect them to the requirement.
 3. Select and reorder the candidate's real experience, projects, and skills to best match this specific job — leave out anything irrelevant to this particular application rather than including everything.
 4. Naturally include keywords/terms from the job description where they genuinely match the candidate's real experience (for ATS matching) — never force a keyword that doesn't apply.
-5. Write the RESUME content following all systemInstruction writing rules above.`);
+5. If SPECIAL NOTES are provided, apply them to this resume only (emphasize, omit, or include instructed items).
+6. Write the RESUME content following all systemInstruction writing rules above.`);
   }
   if (wantCover) {
     tasks.push(`COVER LETTER TASKS:
@@ -56,7 +59,8 @@ Write the COVER LETTER as a direct pitch focused on the employer's problem, not 
 - Explain how the candidate has already solved a similar problem, citing 1-2 specific real projects/experience from the profile with enough detail to be convincing (what was built, what tech, what outcome).
 - Explain concretely how the candidate would approach this role's day-to-day responsibilities given their real skills/experience — not generic enthusiasm, actual reasoning about fit.
 - Close with a short, confident call to action.
-- Target length: approximately ${coverLetterLength} characters. Stay within about 10% of this target.`);
+- Target length: approximately ${coverLetterLength} characters. Stay within about 10% of this target.
+- If SPECIAL NOTES are provided, reflect them in the letter for this application only.`);
   }
 
   const outputShape = wantResume && wantCover
@@ -100,8 +104,20 @@ Write the COVER LETTER as a direct pitch focused on the employer's problem, not 
   "cover_letter": "full plain-text cover letter"
 }`;
 
+  const specialNotesBlock = notes
+    ? `
+SPECIAL NOTES FROM CANDIDATE (apply only to this generation — do not ignore):
+"""
+${notes}
+"""
+Use these notes to emphasize, de-emphasize, omit, or include specific skills/experience for this application.
+`
+    : `
+SPECIAL NOTES FROM CANDIDATE: (none)
+`;
+
   const prompt = `
-CANDIDATE PROFILE (ground truth — everything below is real, do not add anything not listed here):
+CANDIDATE PROFILE (ground truth — use this as the main source of facts):
 ${JSON.stringify(profile)}
 
 TARGET JOB:
@@ -109,7 +125,7 @@ Title: ${jobTitle}
 Company: ${companyName}
 Full job description: 
 ${jobDescription}
-
+${specialNotesBlock}
 OUTPUT MODE: ${outputMode}
 Only produce the pieces required by this mode.
 

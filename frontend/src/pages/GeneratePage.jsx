@@ -197,6 +197,7 @@ export default function GeneratePage() {
   const [outputMode, setOutputMode] = useState('both');
   const [resumeTemplate, setResumeTemplate] = useState('color');
   const [includeContact, setIncludeContact] = useState(true);
+  const [specialNotes, setSpecialNotes] = useState('');
 
   const [resume, setResume] = useState(null);
   const [coverLetter, setCoverLetter] = useState('');
@@ -242,6 +243,7 @@ export default function GeneratePage() {
         if (typeof gen.include_contact === 'boolean') {
           setIncludeContact(gen.include_contact);
         }
+        setSpecialNotes(gen.special_notes || '');
       } catch (err) {
         setError(err.message);
       }
@@ -274,6 +276,7 @@ export default function GeneratePage() {
         output_mode: outputMode,
         resume_template: resumeTemplate,
         include_contact: includeContact,
+        special_notes: specialNotes.trim() || undefined,
       });
       setResume(result.resume || null);
       setCoverLetter(result.cover_letter || '');
@@ -282,6 +285,9 @@ export default function GeneratePage() {
       if (result.resume_template) setResumeTemplate(result.resume_template);
       if (typeof result.include_contact === 'boolean') {
         setIncludeContact(result.include_contact);
+      }
+      if (typeof result.special_notes === 'string') {
+        setSpecialNotes(result.special_notes);
       }
 
       // Add to Redux History Store automatically
@@ -295,6 +301,8 @@ export default function GeneratePage() {
           generated_cover_letter: result.cover_letter,
           output_mode: result.output_mode || outputMode,
           resume_template: result.resume_template || resumeTemplate,
+          include_contact: includeContact,
+          special_notes: specialNotes.trim() || '',
           created_at: new Date().toISOString(),
         })
       );
@@ -542,6 +550,27 @@ export default function GeneratePage() {
             required
             placeholder="Paste the full job description here — the more detail, the better the tailoring…"
           />
+
+          <div>
+            <Field
+              label="Special notes (optional — this application only)"
+              as="textarea"
+              className="min-h-[110px]"
+              value={specialNotes}
+              onChange={(e) => setSpecialNotes(e.target.value.slice(0, 4000))}
+              maxLength={4000}
+              placeholder={
+                'Tell Gemini what to add, emphasize, or leave out for THIS job only.\nExamples:\n• Emphasize React and Node; de-emphasize WordPress\n• Highlight the Tamagn Check project; skip older internships\n• Mention I led the payments migration for 6 months\n• Keep the cover letter shorter and more technical'
+              }
+            />
+            <p className="mt-1.5 text-xs text-ink-muted leading-relaxed">
+              Applied only to this generation — does not change your saved profile.
+              Use it to tailor skills, experience, or tone for one application.
+              {specialNotes.trim()
+                ? ` · ${specialNotes.trim().length}/4000`
+                : ''}
+            </p>
+          </div>
 
           {/* Cover letter length */}
           {wantsCover && (

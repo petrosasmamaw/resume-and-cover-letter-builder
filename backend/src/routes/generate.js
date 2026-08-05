@@ -55,6 +55,7 @@ router.post('/', generateLimiter, async (req, res) => {
       output_mode = 'both',
       resume_template = 'color',
       include_contact = true,
+      special_notes = '',
     } = req.body;
 
     if (!OUTPUT_MODES.has(output_mode)) {
@@ -69,6 +70,7 @@ router.post('/', generateLimiter, async (req, res) => {
     }
 
     const includeContact = include_contact !== false && include_contact !== 'false';
+    const specialNotes = String(special_notes || '').trim().slice(0, 4000);
 
     if (!profile_id) {
       return res.status(400).json({ error: 'profile_id is required' });
@@ -107,6 +109,7 @@ router.post('/', generateLimiter, async (req, res) => {
       companyName: company_name,
       coverLetterLength: length,
       outputMode: output_mode,
+      specialNotes,
     });
 
     const resume =
@@ -117,8 +120,9 @@ router.post('/', generateLimiter, async (req, res) => {
     const saved = await query(
       `INSERT INTO generations
         (profile_id, user_id, job_title, company_name, job_description,
-         generated_resume_json, generated_cover_letter, output_mode, resume_template, include_contact)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         generated_resume_json, generated_cover_letter, output_mode, resume_template,
+         include_contact, special_notes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        RETURNING id, created_at`,
       [
         profile_id,
@@ -131,6 +135,7 @@ router.post('/', generateLimiter, async (req, res) => {
         output_mode,
         resume_template,
         includeContact,
+        specialNotes || null,
       ]
     );
 
@@ -142,6 +147,7 @@ router.post('/', generateLimiter, async (req, res) => {
       output_mode,
       resume_template,
       include_contact: includeContact,
+      special_notes: specialNotes || '',
     });
   } catch (err) {
     console.error('Generate error:', err);
