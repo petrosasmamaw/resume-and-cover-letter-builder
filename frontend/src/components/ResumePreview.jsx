@@ -19,20 +19,21 @@ function normalizeSkillGroups(skills) {
   return [...map.entries()].map(([category, items]) => ({ category, items }));
 }
 
-function ModernPreview({ resume, profile }) {
+function ModernPreview({ resume, profile, includeContact = true }) {
   const name = profile?.full_name || 'Candidate';
   const headline = resume.headline || profile?.title || '';
 
-  const contact = [
-    profile.location,
-    profile.email,
-    profile.phone,
-    profile.linkedin_url,
-    profile.github_url,
-    profile.portfolio_url,
-  ]
-    .filter(Boolean)
-    .join(' | ');
+  const contactParts = includeContact
+    ? [
+        profile?.email,
+        profile?.phone,
+        profile?.location,
+        profile?.linkedin_url,
+        profile?.github_url,
+        profile?.portfolio_url,
+      ]
+    : [profile?.linkedin_url, profile?.github_url, profile?.portfolio_url];
+  const contact = contactParts.filter(Boolean).join(' | ');
 
   const skillGroups = normalizeSkillGroups(resume.skills);
 
@@ -187,19 +188,20 @@ function ModernPreview({ resume, profile }) {
   );
 }
 
-function SimplePreview({ resume, profile }) {
+function SimplePreview({ resume, profile, includeContact = true }) {
   const name = profile?.full_name || 'Candidate';
   const headline = resume.headline || profile?.title || '';
-  const contact = [
-    profile?.email,
-    profile?.phone,
-    profile?.portfolio_url,
-    profile?.github_url,
-    profile?.linkedin_url,
-    profile?.location,
-  ]
-    .filter(Boolean)
-    .join(' | ');
+  const contactParts = includeContact
+    ? [
+        profile?.email,
+        profile?.phone,
+        profile?.location,
+        profile?.portfolio_url,
+        profile?.github_url,
+        profile?.linkedin_url,
+      ]
+    : [profile?.portfolio_url, profile?.github_url, profile?.linkedin_url];
+  const contact = contactParts.filter(Boolean).join(' | ');
 
   const skillGroups = normalizeSkillGroups(resume.skills);
   const awards = Array.isArray(resume.achievements) ? resume.achievements : [];
@@ -389,10 +391,27 @@ function SimplePreview({ resume, profile }) {
 /**
  * Resume preview — template: 'color' | 'simple'
  */
-export default function ResumePreview({ resume, profile, template = 'color' }) {
+export default function ResumePreview({
+  resume,
+  profile,
+  template = 'color',
+  includeContact = true,
+}) {
   if (!resume) return null;
   if (template === 'simple') {
-    return <SimplePreview resume={resume} profile={profile} />;
+    return (
+      <SimplePreview
+        resume={resume}
+        profile={profile}
+        includeContact={includeContact}
+      />
+    );
   }
-  return <ModernPreview resume={resume} profile={profile} />;
+  return (
+    <ModernPreview
+      resume={resume}
+      profile={profile}
+      includeContact={includeContact}
+    />
+  );
 }

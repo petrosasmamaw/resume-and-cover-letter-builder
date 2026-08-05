@@ -115,11 +115,15 @@ export default function HistoryPage() {
     }
   }, [dispatch, profileId]);
 
-  async function handlePdf(id, company, template) {
+  async function handlePdf(id, company, template, includeContact) {
     setPdfLoading(true);
     setError('');
     try {
-      const blob = await api.downloadPdf(id, template || 'color');
+      const blob = await api.downloadPdf(
+        id,
+        template || 'color',
+        includeContact !== false
+      );
       downloadBlob(
         blob,
         `resume-${(company || 'application').replace(/\s+/g, '-')}.pdf`
@@ -258,7 +262,8 @@ export default function HistoryPage() {
                         handlePdf(
                           selected.id,
                           selected.company_name,
-                          selected.resume_template || 'color'
+                          selected.resume_template || 'color',
+                          selected.include_contact !== false
                         )
                       }
                     >
@@ -297,6 +302,7 @@ export default function HistoryPage() {
                     resume={selected.generated_resume_json}
                     profile={fullProfile}
                     template={selected.resume_template || 'color'}
+                    includeContact={selected.include_contact !== false}
                   />
                 )}
 

@@ -54,6 +54,7 @@ router.post('/', generateLimiter, async (req, res) => {
       cover_letter_length,
       output_mode = 'both',
       resume_template = 'color',
+      include_contact = true,
     } = req.body;
 
     if (!OUTPUT_MODES.has(output_mode)) {
@@ -66,6 +67,8 @@ router.post('/', generateLimiter, async (req, res) => {
         error: 'resume_template must be color or simple',
       });
     }
+
+    const includeContact = include_contact !== false && include_contact !== 'false';
 
     if (!profile_id) {
       return res.status(400).json({ error: 'profile_id is required' });
@@ -114,8 +117,8 @@ router.post('/', generateLimiter, async (req, res) => {
     const saved = await query(
       `INSERT INTO generations
         (profile_id, user_id, job_title, company_name, job_description,
-         generated_resume_json, generated_cover_letter, output_mode, resume_template)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         generated_resume_json, generated_cover_letter, output_mode, resume_template, include_contact)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
        RETURNING id, created_at`,
       [
         profile_id,
@@ -127,6 +130,7 @@ router.post('/', generateLimiter, async (req, res) => {
         coverLetter,
         output_mode,
         resume_template,
+        includeContact,
       ]
     );
 
@@ -137,6 +141,7 @@ router.post('/', generateLimiter, async (req, res) => {
       created_at: saved.rows[0].created_at,
       output_mode,
       resume_template,
+      include_contact: includeContact,
     });
   } catch (err) {
     console.error('Generate error:', err);
@@ -273,13 +278,28 @@ router.post('/:generation_id/pdf', async (req, res) => {
       generation.resume_template ||
       'color';
 
+    const includeContact =
+      req.body?.include_contact !== undefined
+        ? req.body.include_contact !== false && req.body.include_contact !== 'false'
+        : generation.include_contact !== false;
+
     const profile = await getFullProfile(generation.profile_id, req.user.id);
     const resume =
       typeof generation.generated_resume_json === 'string'
         ? JSON.parse(generation.generated_resume_json)
         : generation.generated_resume_json;
 
-    const pdf = await generateResumePdf(resume, profile || {}, template);
+    const pdf = await generateResumePdf(resume, profile || {}, template, {
+      includeContact,
+    });
+
+    // Persist last PDF preference if client sent it
+    if (req.body?.include_contact !== undefined) {
+      await query(
+        `UPDATE generations SET include_contact = $1 WHERE id = $2`,
+        [includeContact, generation.id]
+      );
+    }
 
     const safeName = (generation.company_name || 'resume')
       .replace(/[^a-z0-9-_]/gi, '_')

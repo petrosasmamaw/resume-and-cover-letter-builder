@@ -57,6 +57,19 @@ const TEMPLATES = [
   },
 ];
 
+const CONTACT_MODES = [
+  {
+    id: 'with',
+    label: 'With contact',
+    hint: 'Shows email, phone, and address in the header',
+  },
+  {
+    id: 'without',
+    label: 'Without contact',
+    hint: 'Hides email, phone & address — keeps LinkedIn/GitHub/portfolio',
+  },
+];
+
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -183,6 +196,7 @@ export default function GeneratePage() {
   const [customLength, setCustomLength] = useState('');
   const [outputMode, setOutputMode] = useState('both');
   const [resumeTemplate, setResumeTemplate] = useState('color');
+  const [includeContact, setIncludeContact] = useState(true);
 
   const [resume, setResume] = useState(null);
   const [coverLetter, setCoverLetter] = useState('');
@@ -225,6 +239,9 @@ export default function GeneratePage() {
         setGenerationId(gen.id);
         if (gen.output_mode) setOutputMode(gen.output_mode);
         if (gen.resume_template) setResumeTemplate(gen.resume_template);
+        if (typeof gen.include_contact === 'boolean') {
+          setIncludeContact(gen.include_contact);
+        }
       } catch (err) {
         setError(err.message);
       }
@@ -256,12 +273,16 @@ export default function GeneratePage() {
         cover_letter_length: length,
         output_mode: outputMode,
         resume_template: resumeTemplate,
+        include_contact: includeContact,
       });
       setResume(result.resume || null);
       setCoverLetter(result.cover_letter || '');
       setGenerationId(result.generation_id);
       if (result.output_mode) setOutputMode(result.output_mode);
       if (result.resume_template) setResumeTemplate(result.resume_template);
+      if (typeof result.include_contact === 'boolean') {
+        setIncludeContact(result.include_contact);
+      }
 
       // Add to Redux History Store automatically
       dispatch(
@@ -292,7 +313,11 @@ export default function GeneratePage() {
     setPdfLoading(true);
     setError('');
     try {
-      const blob = await api.downloadPdf(generationId, resumeTemplate);
+      const blob = await api.downloadPdf(
+        generationId,
+        resumeTemplate,
+        includeContact
+      );
       downloadBlob(
         blob,
         `resume-${(companyName || 'application').replace(/\s+/g, '-')}-${resumeTemplate}.pdf`
@@ -462,6 +487,23 @@ export default function GeneratePage() {
             </div>
           )}
 
+          {/* Contact details on resume */}
+          {wantsResume && (
+            <div>
+              <p className="text-sm font-bold text-ink mb-3">Contact on resume</p>
+              <ChoiceCards
+                options={CONTACT_MODES}
+                value={includeContact ? 'with' : 'without'}
+                onChange={(id) => setIncludeContact(id === 'with')}
+              />
+              <p className="mt-2 text-xs text-ink-muted leading-relaxed">
+                {includeContact
+                  ? 'Header will include email, phone, and address along with your links.'
+                  : 'Private details stay off the PDF — only public links remain if set on your profile.'}
+              </p>
+            </div>
+          )}
+
           {/* Job fields */}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
@@ -572,6 +614,8 @@ export default function GeneratePage() {
                     <span className="font-medium">
                       {TEMPLATES.find((t) => t.id === resumeTemplate)?.label || resumeTemplate}
                     </span>
+                    {' · '}
+                    {includeContact ? 'With contact' : 'Without contact'}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -587,6 +631,16 @@ export default function GeneratePage() {
                       {t.id === 'color' ? 'Modern' : 'Premium'}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    onClick={() => setIncludeContact((v) => !v)}
+                    className={`rf-btn !min-h-9 !px-3 !text-xs !rounded-lg ${
+                      includeContact ? 'rf-btn-secondary' : 'rf-btn-ghost'
+                    }`}
+                    title="Toggle email, phone, and address on the resume"
+                  >
+                    {includeContact ? 'Contact on' : 'Contact off'}
+                  </button>
                   <Button
                     type="button"
                     variant="accent"
@@ -606,6 +660,7 @@ export default function GeneratePage() {
                 resume={resume}
                 profile={profile}
                 template={resumeTemplate}
+                includeContact={includeContact}
               />
             </section>
           )}

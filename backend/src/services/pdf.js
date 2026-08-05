@@ -2,15 +2,25 @@ import puppeteer from 'puppeteer';
 import { renderResumeHtml } from '../templates/resume.html.js';
 import { renderSimpleResumeHtml } from '../templates/resume-simple.html.js';
 
-export function renderResumeByTemplate(resume, profile, template = 'color') {
+export function renderResumeByTemplate(
+  resume,
+  profile,
+  template = 'color',
+  options = {}
+) {
   if (template === 'simple') {
-    return renderSimpleResumeHtml(resume, profile);
+    return renderSimpleResumeHtml(resume, profile, options);
   }
-  return renderResumeHtml(resume, profile);
+  return renderResumeHtml(resume, profile, options);
 }
 
-export async function generateResumePdf(resume, profile, template = 'color') {
-  const html = renderResumeByTemplate(resume, profile, template);
+export async function generateResumePdf(
+  resume,
+  profile,
+  template = 'color',
+  options = {}
+) {
+  const html = renderResumeByTemplate(resume, profile, template, options);
 
   const browser = await puppeteer.launch({
     headless: true,

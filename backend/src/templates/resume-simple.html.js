@@ -38,21 +38,23 @@ function normalizeSkillGroups(skills) {
  * Premium ATS-safe single-column resume.
  * Inter typography + restrained blue hierarchy.
  */
-export function renderSimpleResumeHtml(resume, profile = {}) {
+export function renderSimpleResumeHtml(resume, profile = {}, options = {}) {
+  const includeContact = options.includeContact !== false;
   const name = escapeHtml(profile.full_name || resume.name || 'Candidate');
   const headline = escapeHtml(resume.headline || profile.title || '');
 
-  const contact = [
-    profile.email,
-    profile.phone,
-    profile.portfolio_url,
-    profile.github_url,
-    profile.linkedin_url,
-    profile.location,
-  ]
-    .filter(Boolean)
-    .map(escapeHtml)
-    .join(' | ');
+  const contactParts = includeContact
+    ? [
+        profile.email,
+        profile.phone,
+        profile.location,
+        profile.portfolio_url,
+        profile.github_url,
+        profile.linkedin_url,
+      ]
+    : [profile.portfolio_url, profile.github_url, profile.linkedin_url];
+
+  const contact = contactParts.filter(Boolean).map(escapeHtml).join(' | ');
 
   const skillGroups = normalizeSkillGroups(resume.skills);
 

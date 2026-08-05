@@ -44,22 +44,25 @@ function normalizeSkillGroups(skills) {
  * - one accent color used sparingly
  * - no icons/graphics/tables
  */
-export function renderResumeHtml(resume, profile = {}) {
+export function renderResumeHtml(resume, profile = {}, options = {}) {
+  const includeContact = options.includeContact !== false;
   const accent = '#1B2A4A'; // Navy
   const name = escapeHtml(profile.full_name || resume.name || 'Candidate');
   const headline = escapeHtml(resume.headline || profile.title || '');
 
-  const contact = [
-    profile.location,
-    profile.email,
-    profile.phone,
-    profile.linkedin_url,
-    profile.github_url,
-    profile.portfolio_url,
-  ]
-    .filter(Boolean)
-    .map(escapeHtml)
-    .join(' | ');
+  // With contact: private details + links. Without: links only (no email/phone/address).
+  const contactParts = includeContact
+    ? [
+        profile.email,
+        profile.phone,
+        profile.location,
+        profile.linkedin_url,
+        profile.github_url,
+        profile.portfolio_url,
+      ]
+    : [profile.linkedin_url, profile.github_url, profile.portfolio_url];
+
+  const contact = contactParts.filter(Boolean).map(escapeHtml).join(' | ');
 
   const skillGroups = normalizeSkillGroups(resume.skills);
 

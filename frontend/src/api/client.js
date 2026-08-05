@@ -134,16 +134,17 @@ export const api = {
     }),
   generate: (body) =>
     request('/api/generate', { method: 'POST', body: JSON.stringify(body) }),
-  downloadPdf: async (generationId, resumeTemplate) => {
+  downloadPdf: async (generationId, resumeTemplate, includeContact) => {
     const headers = { 'Content-Type': 'application/json' };
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
+    const body = {};
+    if (resumeTemplate) body.resume_template = resumeTemplate;
+    if (includeContact !== undefined) body.include_contact = includeContact;
     const res = await fetch(buildApiUrl(`/api/generate/${generationId}/pdf`), {
       method: 'POST',
       headers,
-      body: JSON.stringify(
-        resumeTemplate ? { resume_template: resumeTemplate } : {}
-      ),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       if (res.status === 401) clearAuth();
