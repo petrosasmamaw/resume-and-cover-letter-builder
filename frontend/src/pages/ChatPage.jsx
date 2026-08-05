@@ -12,13 +12,13 @@ import {
 } from '../components/ui.jsx';
 
 const WELCOME =
-  "Hi — I'm your career coach. Paste a job description, ask how you fit the role, or get ideas for what to emphasize on your resume and cover letter.";
+  "Hi — I'm your ResumeForge assistant. I know the app (Generate, Special notes, Upwork-safe contact, templates, humanize) and I can also talk about any career or work topic. Paste a job and ask me to draft Special notes, or ask how a feature works.";
 
 const SUGGESTIONS = [
-  'Break down this job description into must-haves vs nice-to-haves',
+  'Create Special notes for this job using my profile experience',
+  'Explain ResumeForge features and what I should use for an Upwork proposal',
   'How does my profile fit this role?',
-  'What should I emphasize in my resume for this job?',
-  'Suggest special notes I can use when generating',
+  'Interview prep for this job (not tied to the app)',
 ];
 
 function MessageBubble({ role, content }) {
@@ -34,9 +34,9 @@ function MessageBubble({ role, content }) {
         ].join(' ')}
       >
         {!isUser && (
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-accent">
-            Coach
-          </p>
+              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-accent">
+                Assistant
+              </p>
         )}
         {content}
       </div>
@@ -114,7 +114,7 @@ export default function ChatPage() {
     <div className="space-y-6 animate-fade-up">
       <PageHeader
         title="Career chat"
-        subtitle="Talk through a job description and how to position your application — powered by the same Gemini API as Generate."
+        subtitle="Product guide + universal career coach. Fast Flash model — draft Special notes, pick Generate settings, or talk work unrelated to the app."
         action={
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="ghost" onClick={clearChat}>
@@ -185,8 +185,8 @@ export default function ChatPage() {
                 }
               }}
               rows={3}
-              maxLength={4000}
-              placeholder="Ask about a job, paste requirements, or get resume advice…"
+                maxLength={12000}
+              placeholder="Ask about a job, paste a JD + ask for Special notes, or ask anything about work / ResumeForge…"
               className="rf-input w-full resize-y min-h-[4.5rem]"
               disabled={sending}
             />
@@ -194,6 +194,7 @@ export default function ChatPage() {
               <p className="text-[11px] text-ink-muted">
                 Enter to send · Shift+Enter for newline
                 {profileId ? ' · Profile attached' : ''}
+                {' · Fast mode'}
               </p>
               <Button type="submit" disabled={sending || !input.trim()}>
                 {sending ? 'Sending…' : 'Send'}

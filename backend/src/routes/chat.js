@@ -17,8 +17,8 @@ const chatLimiter = rateLimit({
   },
 });
 
-const MAX_MESSAGE = 4000;
-const MAX_HISTORY = 40;
+const MAX_MESSAGE = 12000;
+const MAX_HISTORY = 20;
 const MAX_JOB_DESCRIPTION = 20000;
 
 router.post('/', chatLimiter, async (req, res) => {

@@ -261,8 +261,90 @@ async function generateWithModelFallback(genAI, { systemInstruction, prompt }) {
   }
 }
 
+const CHAT_FAST_MODEL = process.env.GEMINI_CHAT_MODEL || FALLBACK_MODEL;
+const CHAT_DEEP_MODEL = process.env.GEMINI_CHAT_FALLBACK_MODEL || PRIMARY_MODEL;
+
+const RESUMEFORGE_PRODUCT_GUIDE = `RESUMEFORGE PRODUCT KNOWLEDGE (use when user asks how the app works or wants generate helpers):
+
+Pages / flow:
+1) Profile — user stores full_name, title, contact, summary, skills (by category), experience, projects, education, certifications. Can paste a CV and use AI parse to fill fields.
+2) Generate — creates tailored resume and/or cover letter for ONE job using the saved profile + job title/company/description.
+3) History — past generations; reopen, download PDF, humanize/detect cover letter.
+4) Chat (you) — dual coach: (A) ResumeForge product guide + generation helpers, (B) general career/work talk not tied to the app.
+
+Generate options the user can set:
+- Output mode: both | resume only | cover letter only.
+- Cover letter length presets: Short ~800, Medium ~1200, Long ~1600 characters.
+- Resume template: "Modern single column" (color) or "Premium ATS" (simple) — both ATS-safe.
+- Contact mode:
+  • With contact — email, phone, address, LinkedIn, GitHub, portfolio on the resume.
+  • Upwork-safe (no contact) — hides ALL contact channels (for marketplaces that ban off-site contact). Skills/experience/projects stay.
+- Special notes (optional — this application only): free-text instructions injected into Gemini for THAT generation only. Use to emphasize/omit skills, highlight one job/project, add a skill for this application, exclude something, tone guidance, etc. Stored with the generation. Does NOT permanently change the Profile.
+
+After generate:
+- Preview resume + cover letter; download PDF.
+- Humanize cover letter (local NLP pipeline) and AI-detect score — cover letter only.
+- Requirement match list shows JD requirements vs candidate matches.
+
+When to recommend features:
+- User pastes a JD / wants tailored docs → Generate (+ offer Special notes if they want control).
+- Marketplace / Upwork proposal → Upwork-safe contact + maybe cover_letter or proposal tone notes.
+- Company/email apply → With contact + suitable template.
+- Wants to tweak one application without editing Profile forever → Special notes.
+- Cover letter feels robotic → Humanize on the generation result.
+- Profile messy / pasted CV → Profile AI parse.
+- Unsure fit → chat fit analysis using their profile + JD, then optional Special notes + Generate.
+
+SPECIAL NOTES DRAFTING RULES (critical when user asks to create special notes):
+- Output a ready-to-paste block under a clear heading like: Special notes (copy into Generate → Special notes).
+- Ground every emphasize/omit instruction in the CANDIDATE PROFILE facts + the ACTIVE JOB CONTEXT / JD in the message. Do not invent employers, metrics, or skills.
+- Prefer concrete bullets: what to EMPHASIZE (skills, one experience, projects), what to OMIT or de-emphasize, ATS keywords only if they truly match profile, cover-letter angle if relevant.
+- Keep pasteable length ~800–2000 characters unless user asks otherwise.
+- If profile or JD is missing, ask briefly for the missing piece OR draft using what you have and label assumptions.
+- After the paste block, add 1–2 short lines: which Generate settings to pick (contact mode, output mode, template) when helpful.`;
+
+function slimProfileForChat(profile) {
+  if (!profile) return null;
+  return {
+    full_name: profile.full_name,
+    title: profile.title,
+    location: profile.location,
+    summary: profile.summary,
+    skills: (profile.skills || []).map((s) => ({
+      category: s.category,
+      name: s.name,
+    })),
+    experience: (profile.experience || []).map((e) => ({
+      role_title: e.role_title,
+      company: e.company,
+      location: e.location,
+      start_date: e.start_date,
+      end_date: e.end_date,
+      description: String(e.description || '').slice(0, 1200),
+    })),
+    projects: (profile.projects || []).map((p) => ({
+      name: p.name,
+      url: p.url,
+      tech_stack: p.tech_stack,
+      description: String(p.description || '').slice(0, 800),
+    })),
+    education: (profile.education || []).map((e) => ({
+      institution: e.institution,
+      degree: e.degree,
+      field: e.field,
+      start_date: e.start_date,
+      end_date: e.end_date,
+    })),
+    certifications: (profile.certifications || []).map((c) => ({
+      name: c.name,
+      provider: c.provider,
+      issue_date: c.issue_date,
+    })),
+  };
+}
+
 /**
- * Multi-turn career / job-description coach chat.
+ * Dual-mode ResumeForge + general career coach (fast Flash, optional Pro fallback).
  * messages: [{ role: 'user' | 'assistant', content: string }] — last must be user.
  */
 export async function chatCareerCoach({
@@ -281,34 +363,44 @@ export async function chatCareerCoach({
   }
 
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const slim = slimProfileForChat(profile);
 
   const contextBits = [];
-  if (profile) {
-    contextBits.push(`CANDIDATE PROFILE (facts — do not invent beyond this):\n${JSON.stringify(profile)}`);
+  if (slim) {
+    contextBits.push(
+      `CANDIDATE PROFILE (ground truth — never invent beyond this):\n${JSON.stringify(slim)}`
+    );
   }
   if (jobTitle || companyName || jobDescription) {
-    contextBits.push(`ACTIVE JOB CONTEXT:
+    contextBits.push(`ACTIVE JOB CONTEXT (panel — may be empty; also read JDs pasted in chat):
 Title: ${jobTitle || '(not set)'}
 Company: ${companyName || '(not set)'}
 Description:
-${jobDescription || '(not set)'}`);
+${String(jobDescription || '(not set)').slice(0, 12000)}`);
   }
 
-  const systemInstruction = `You are ResumeForge Career Coach — a practical advisor for job applications, resumes, and cover letters.
+  const systemInstruction = `You are ResumeForge Assistant — a fast dual coach:
+(1) Product expert for ResumeForge (features, settings, Special notes, contact/Upwork mode, templates, flow).
+(2) Universal career coach (jobs, interviews, negotiations, career strategy) even when unrelated to ResumeForge.
 
-Your job:
-- Help the user understand job descriptions (requirements, must-haves vs nice-to-haves, red flags, seniority).
-- Coach on how their profile fits a role and what to emphasize or leave out.
-- Suggest talk tracks, interview angles, and special notes they could use when generating a resume/cover letter in ResumeForge.
-- Stay concise and actionable. Use short paragraphs or bullets. Avoid AI fluff words.
+Tone: direct, practical, short. Prefer bullets. No AI fluff ("synergy", "passionate", "delve", "testament", "leverage" as verb, etc.).
 
-Rules:
-- Do not invent employers, metrics, degrees, or skills not present in the candidate profile or clearly stated by the user.
-- If profile/job context is missing, ask for what’s needed or give general advice.
-- You are not generating the final resume PDF here — guide them; they use Generate for documents.
-- Plain helpful prose only (no JSON unless the user asks for structured notes).
+Speed rules:
+- Answer in as few words as clarity allows (usually under ~200 words unless drafting Special notes or a longer deliverable).
+- If the user asks to CREATE Special notes / generate helpers, deliver the paste-ready block immediately — do not over-explain first.
+- If the question is general work advice with no app need, answer as a normal career coach — do not force ResumeForge features.
 
-${contextBits.length ? `\nCONTEXT FOR THIS CHAT:\n${contextBits.join('\n\n')}` : ''}`;
+Mode detect:
+- Product / generation requests ("special notes", "how do I generate", "Upwork", "template", "humanize", "what should I set") → use product knowledge + profile/JD.
+- General career ("salary", "interview", "should I quit", workplace advice) → universal coach; mention ResumeForge only if it genuinely helps.
+
+Grounding:
+- Profile/experience facts come only from CANDIDATE PROFILE or what the user just typed.
+- Match job requirements to real experience/projects/skills when recommending what to emphasize.
+
+${RESUMEFORGE_PRODUCT_GUIDE}
+
+${contextBits.length ? `\nLIVE CONTEXT:\n${contextBits.join('\n\n')}` : '\nLIVE CONTEXT: (no profile/job panel — ask if needed or use chat content)'}`;
 
   const normalized = [];
   for (const m of messages) {
@@ -328,7 +420,6 @@ ${contextBits.length ? `\nCONTEXT FOR THIS CHAT:\n${contextBits.join('\n\n')}` :
     throw err;
   }
 
-  // Gemini chat history cannot start with a model turn
   while (normalized.length && normalized[0].role === 'model') {
     normalized.shift();
   }
@@ -347,22 +438,29 @@ ${contextBits.length ? `\nCONTEXT FOR THIS CHAT:\n${contextBits.join('\n\n')}` :
 }
 
 async function chatWithModelFallback(genAI, { systemInstruction, history, message }) {
+  const generationConfig = {
+    temperature: 0.55,
+    maxOutputTokens: 1400,
+  };
+
   async function run(modelName) {
     const model = genAI.getGenerativeModel({
       model: modelName,
       systemInstruction,
+      generationConfig,
     });
     const chat = model.startChat({ history });
     const result = await chat.sendMessage(message);
     return result.response.text();
   }
 
+  // Prefer Flash for speed; fall back to Pro if Flash fails / quota issues
   try {
-    return await run(PRIMARY_MODEL);
+    return await run(CHAT_FAST_MODEL);
   } catch (error) {
-    if (!shouldFallbackModel(error) || PRIMARY_MODEL === FALLBACK_MODEL) {
+    if (!shouldFallbackModel(error) || CHAT_FAST_MODEL === CHAT_DEEP_MODEL) {
       throw error;
     }
-    return run(FALLBACK_MODEL);
+    return run(CHAT_DEEP_MODEL);
   }
 }
