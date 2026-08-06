@@ -29,8 +29,8 @@ function MessageBubble({ role, content }) {
         className={[
           'max-w-[90%] sm:max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap',
           isUser
-            ? 'bg-navy text-white rounded-br-md'
-            : 'bg-surface border border-line text-ink rounded-bl-md',
+            ? 'bg-accent text-white rounded-br-md'
+            : 'bg-panel border border-line text-ink rounded-bl-md',
         ].join(' ')}
       >
         {!isUser && (

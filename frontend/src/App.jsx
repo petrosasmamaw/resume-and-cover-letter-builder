@@ -25,18 +25,13 @@ function Protected({ children }) {
 }
 
 function navClass({ isActive }) {
-  return [
-    'relative px-3.5 py-2 text-sm font-semibold rounded-lg transition-all duration-150 flex items-center gap-1.5',
-    isActive
-      ? 'text-navy bg-accent-soft shadow-xs border border-line-accent'
-      : 'text-ink-muted hover:text-ink hover:bg-white/70',
-  ].join(' ');
+  return ['rf-nav-link', isActive ? 'rf-nav-link-active' : ''].filter(Boolean).join(' ');
 }
 
 function mobileNavClass({ isActive }) {
   return [
-    'flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold tracking-wide uppercase transition-colors duration-150 min-h-[3.75rem]',
-    isActive ? 'text-navy' : 'text-ink-muted hover:text-ink',
+    'flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold tracking-wide transition-colors duration-150 min-h-[3.5rem]',
+    isActive ? 'text-accent-dim' : 'text-ink-muted hover:text-ink',
   ].join(' ');
 }
 
@@ -117,15 +112,15 @@ function IconChatNav({ active }) {
 function UserPill({ email, onLogout }) {
   const initials = email ? email[0].toUpperCase() : '?';
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2.5">
       <div
-        className="hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent to-navy text-white text-xs font-bold"
+        className="hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-white text-xs font-semibold"
         title={email}
       >
         {initials}
       </div>
       <span
-        className="hidden xl:inline max-w-[140px] truncate text-xs font-medium text-ink-muted"
+        className="hidden xl:inline max-w-[140px] truncate text-sm font-medium text-ink-muted"
         title={email}
       >
         {email}
@@ -133,7 +128,7 @@ function UserPill({ email, onLogout }) {
       <button
         type="button"
         onClick={onLogout}
-        className="rf-btn rf-btn-ghost !min-h-8 !px-3 !text-xs !rounded-md gap-1.5"
+        className="rf-btn rf-btn-ghost !min-h-8 !px-3 !text-sm !rounded-md gap-1.5"
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
           <path
@@ -160,11 +155,8 @@ function Shell() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* ── Header ───────────────────────────────────────── */}
-      <header
-        className="sticky top-0 z-30 border-b border-line/70 rf-glass"
-        style={{ boxShadow: '0 1px 24px rgba(12,59,58,0.06)' }}
-      >
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3 md:py-3.5 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-30 rf-glass">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           <NavLink
             to="/"
             className="shrink-0 focus-visible:outline-offset-4"
@@ -172,13 +164,12 @@ function Shell() {
             <BrandMark compact={isAuthPage} showTagline={!isAuthPage} />
           </NavLink>
 
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <nav
-              className="hidden md:flex items-center gap-0.5 rounded-xl bg-surface/90 p-1 border border-line/80"
+              className="hidden md:flex items-center gap-0.5"
               aria-label="Primary navigation"
             >
               <NavLink to="/" end className={navClass}>
-                <IconHome className="w-4 h-4 text-accent" />
                 Home
               </NavLink>
 
@@ -200,7 +191,6 @@ function Shell() {
               )}
 
               <NavLink to="/faq" className={navClass}>
-                <IconHelp className="w-4 h-4 text-accent" />
                 FAQ
               </NavLink>
             </nav>
@@ -215,13 +205,13 @@ function Shell() {
                   to="/login"
                   className="rf-btn rf-btn-ghost !min-h-9 !text-sm !px-3.5"
                 >
-                  Sign in
+                  Log in
                 </NavLink>
                 <NavLink
                   to="/signup"
-                  className="rf-btn rf-btn-primary !min-h-9 !text-sm !px-4"
+                  className="rf-btn rf-btn-accent !min-h-9 !text-sm !px-4"
                 >
-                  Get Started
+                  Sign up
                 </NavLink>
               </div>
             )}
@@ -279,19 +269,14 @@ function Shell() {
 
       {/* ── Mobile Bottom Nav ────────────────────────────── */}
       <nav
-        className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t border-line bg-panel/95 backdrop-blur-2xl rf-safe-bottom"
+        className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t border-line bg-panel/98 backdrop-blur-xl rf-safe-bottom"
         aria-label="Mobile navigation"
-        style={{ boxShadow: '0 -1px 20px rgba(12,59,58,0.07)' }}
       >
-        <div className="mx-auto max-w-md flex">
+        <div className="mx-auto max-w-lg flex">
           <NavLink to="/" end className={mobileNavClass}>
             {({ isActive }) => (
               <>
-                <div className={`relative flex items-center justify-center w-8 h-6 rounded-lg transition-all duration-150 ${
-                  isActive ? 'bg-accent-soft' : ''
-                }`}>
-                  <IconHome className="w-4 h-4" />
-                </div>
+                <IconHome className={`w-5 h-5 ${isActive ? 'text-accent' : ''}`} />
                 <span>Home</span>
               </>
             )}
@@ -302,11 +287,7 @@ function Shell() {
               <NavLink to="/profile" className={mobileNavClass}>
                 {({ isActive }) => (
                   <>
-                    <div className={`relative flex items-center justify-center w-8 h-6 rounded-lg transition-all duration-150 ${
-                      isActive ? 'bg-accent-soft' : ''
-                    }`}>
-                      <IconProfileNav active={isActive} />
-                    </div>
+                    <IconProfileNav active={isActive} />
                     <span>Profile</span>
                   </>
                 )}
@@ -315,11 +296,7 @@ function Shell() {
               <NavLink to="/generate" className={mobileNavClass}>
                 {({ isActive }) => (
                   <>
-                    <div className={`relative flex items-center justify-center w-8 h-6 rounded-lg transition-all duration-150 ${
-                      isActive ? 'bg-accent-soft' : ''
-                    }`}>
-                      <IconGenerateNav active={isActive} />
-                    </div>
+                    <IconGenerateNav active={isActive} />
                     <span>Generate</span>
                   </>
                 )}
@@ -328,11 +305,7 @@ function Shell() {
               <NavLink to="/chat" className={mobileNavClass}>
                 {({ isActive }) => (
                   <>
-                    <div className={`relative flex items-center justify-center w-8 h-6 rounded-lg transition-all duration-150 ${
-                      isActive ? 'bg-accent-soft' : ''
-                    }`}>
-                      <IconChatNav active={isActive} />
-                    </div>
+                    <IconChatNav active={isActive} />
                     <span>Chat</span>
                   </>
                 )}
@@ -341,11 +314,7 @@ function Shell() {
               <NavLink to="/history" className={mobileNavClass}>
                 {({ isActive }) => (
                   <>
-                    <div className={`relative flex items-center justify-center w-8 h-6 rounded-lg transition-all duration-150 ${
-                      isActive ? 'bg-accent-soft' : ''
-                    }`}>
-                      <IconHistoryNav active={isActive} />
-                    </div>
+                    <IconHistoryNav active={isActive} />
                     <span>History</span>
                   </>
                 )}
@@ -355,12 +324,8 @@ function Shell() {
             <NavLink to="/login" className={mobileNavClass}>
               {({ isActive }) => (
                 <>
-                  <div className={`relative flex items-center justify-center w-8 h-6 rounded-lg transition-all duration-150 ${
-                    isActive ? 'bg-accent-soft' : ''
-                  }`}>
-                    <IconProfileNav active={isActive} />
-                  </div>
-                  <span>Sign In</span>
+                  <IconProfileNav active={isActive} />
+                  <span>Log in</span>
                 </>
               )}
             </NavLink>
@@ -369,11 +334,7 @@ function Shell() {
           <NavLink to="/faq" className={mobileNavClass}>
             {({ isActive }) => (
               <>
-                <div className={`relative flex items-center justify-center w-8 h-6 rounded-lg transition-all duration-150 ${
-                  isActive ? 'bg-accent-soft' : ''
-                }`}>
-                  <IconHelp className="w-4 h-4" />
-                </div>
+                <IconHelp className={`w-5 h-5 ${isActive ? 'text-accent' : ''}`} />
                 <span>FAQ</span>
               </>
             )}

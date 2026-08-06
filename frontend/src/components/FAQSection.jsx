@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { IconChevronDown, IconSearch, IconHelp } from './ui.jsx';
+import { IconChevronDown, IconSearch } from './ui.jsx';
 
 export const FAQ_DATA = [
   {
@@ -81,16 +81,13 @@ export default function FAQSection({ limit = null, showHeader = true, compact = 
   return (
     <div className="w-full space-y-6">
       {showHeader && (
-        <div className="text-center max-w-2xl mx-auto space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-soft text-navy text-xs font-bold uppercase tracking-wider border border-line-accent">
-            <IconHelp className="w-4 h-4 text-accent" />
-            Frequently Asked Questions
-          </div>
-          <h2 className="rf-page-title !text-2xl md:!text-3xl">
+        <div className="max-w-2xl space-y-2">
+          <p className="rf-eyebrow">FAQ</p>
+          <h2 className="font-display text-2xl md:text-3xl font-semibold text-navy">
             Everything you need to know
           </h2>
-          <p className="rf-page-sub text-sm mx-auto">
-            Got questions about AI resume generation, ATS scoring, or data privacy? We’ve got answers.
+          <p className="rf-page-sub !mt-1">
+            Questions about generating resumes, ATS scoring, Special notes, and privacy.
           </p>
         </div>
       )}
@@ -105,9 +102,9 @@ export default function FAQSection({ limit = null, showHeader = true, compact = 
                 key={cat}
                 type="button"
                 onClick={() => setActiveCategory(cat)}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-all ${
                   activeCategory === cat
-                    ? 'bg-navy text-white shadow-xs'
+                    ? 'bg-accent text-white'
                     : 'bg-panel border border-line text-ink-muted hover:text-ink hover:border-line-strong'
                 }`}
               >
@@ -144,14 +141,14 @@ export default function FAQSection({ limit = null, showHeader = true, compact = 
                 key={faq.id}
                 className={`rf-card transition-all duration-200 ${
                   isOpen
-                    ? 'border-navy shadow-soft bg-white'
+                    ? 'border-accent shadow-soft bg-white'
                     : 'border-line hover:border-line-strong'
                 }`}
               >
                 <button
                   type="button"
                   onClick={() => setOpenId(isOpen ? null : faq.id)}
-                  className="w-full p-4 sm:p-5 flex items-center justify-between gap-4 text-left font-bold text-navy hover:text-accent transition-colors"
+                  className="w-full p-4 sm:p-5 flex items-center justify-between gap-4 text-left font-semibold text-navy hover:text-accent-dim transition-colors"
                 >
                   <span className="text-sm sm:text-base leading-snug">{faq.question}</span>
                   <div

@@ -93,16 +93,15 @@ export default function LoginPage() {
         {/* Feature hints */}
         <div className="mt-8 grid grid-cols-3 gap-3 text-center">
           {[
-            { icon: '🎯', text: 'ATS-safe resumes' },
-            { icon: '✍️', text: 'AI cover letters' },
-            { icon: '🔒', text: 'Private & secure' },
-          ].map((f) => (
+            'ATS-safe resumes',
+            'AI cover letters',
+            'Private & secure',
+          ].map((text) => (
             <div
-              key={f.text}
-              className="rounded-xl border border-line bg-panel/50 px-2 py-3 text-xs text-ink-muted"
+              key={text}
+              className="rounded-lg border border-line bg-panel px-2 py-3 text-xs font-medium text-ink-muted"
             >
-              <div className="text-lg mb-1">{f.icon}</div>
-              {f.text}
+              {text}
             </div>
           ))}
         </div>
