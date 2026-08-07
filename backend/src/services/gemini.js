@@ -320,13 +320,13 @@ function slimProfileForChat(profile) {
       location: e.location,
       start_date: e.start_date,
       end_date: e.end_date,
-      description: String(e.description || '').slice(0, 1200),
+      description: String(e.description || '').slice(0, 2500),
     })),
     projects: (profile.projects || []).map((p) => ({
       name: p.name,
       url: p.url,
       tech_stack: p.tech_stack,
-      description: String(p.description || '').slice(0, 800),
+      description: String(p.description || '').slice(0, 1800),
     })),
     education: (profile.education || []).map((e) => ({
       institution: e.institution,
@@ -343,8 +343,26 @@ function slimProfileForChat(profile) {
   };
 }
 
+function profileDigest(slim) {
+  if (!slim) return '';
+  const skillNames = (slim.skills || []).map((s) => s.name).filter(Boolean);
+  const roles = (slim.experience || [])
+    .map((e) => `${e.role_title || 'Role'} @ ${e.company || 'Company'}`)
+    .slice(0, 8);
+  const projects = (slim.projects || []).map((p) => p.name).filter(Boolean).slice(0, 8);
+  return `PROFILE SNAPSHOT FOR FAST LOOKUP:
+Name/title: ${slim.full_name || '(unnamed)'} — ${slim.title || '(no title)'}
+Location: ${slim.location || '(not set)'}
+Skills (${skillNames.length}): ${skillNames.join(', ') || '(none)'}
+Roles: ${roles.join(' | ') || '(none)'}
+Projects: ${projects.join(' | ') || '(none)'}
+Education: ${(slim.education || [])
+    .map((e) => [e.degree, e.field, e.institution].filter(Boolean).join(' — '))
+    .join(' | ') || '(none)'}`;
+}
+
 /**
- * Dual-mode ResumeForge + general career coach (fast Flash, optional Pro fallback).
+ * Dual-mode ResumeForge + profile-grounded application coach (Flash, Pro fallback).
  * messages: [{ role: 'user' | 'assistant', content: string }] — last must be user.
  */
 export async function chatCareerCoach({
@@ -367,40 +385,71 @@ export async function chatCareerCoach({
 
   const contextBits = [];
   if (slim) {
+    contextBits.push(profileDigest(slim));
     contextBits.push(
-      `CANDIDATE PROFILE (ground truth — never invent beyond this):\n${JSON.stringify(slim)}`
+      `FULL CANDIDATE PROFILE JSON (ground truth — never invent beyond this):\n${JSON.stringify(slim)}`
+    );
+  } else {
+    contextBits.push(
+      'FULL CANDIDATE PROFILE: (missing) — tell the user to save a Profile first when they ask application/Upwork answers about their experience.'
     );
   }
   if (jobTitle || companyName || jobDescription) {
-    contextBits.push(`ACTIVE JOB CONTEXT (panel — may be empty; also read JDs pasted in chat):
+    contextBits.push(`ACTIVE JOB / APPLICATION CONTEXT:
 Title: ${jobTitle || '(not set)'}
 Company: ${companyName || '(not set)'}
 Description:
 ${String(jobDescription || '(not set)').slice(0, 12000)}`);
   }
 
-  const systemInstruction = `You are ResumeForge Assistant — a fast dual coach:
-(1) Product expert for ResumeForge (features, settings, Special notes, contact/Upwork mode, templates, flow).
-(2) Universal career coach (jobs, interviews, negotiations, career strategy) even when unrelated to ResumeForge.
+  const systemInstruction = `You are ResumeForge Assistant — the same AI team behind Generate (resume/cover letters), with FULL read access to the candidate's saved Profile.
 
-Tone: direct, practical, short. Prefer bullets. No AI fluff ("synergy", "passionate", "delve", "testament", "leverage" as verb, etc.).
+Three modes (detect automatically):
+1) PROFILE APPLICATION ANSWERS — Upwork invite questions, client screens, "tell me about your SaaS experience", proposal Q&A, interview answers about THEIR background.
+2) PRODUCT GUIDE — ResumeForge features (Generate, Special notes, Upwork-safe contact, templates, humanize).
+3) GENERAL CAREER — salary, workplace advice, etc. (profile optional).
 
-Speed rules:
-- Answer in as few words as clarity allows (usually under ~200 words unless drafting Special notes or a longer deliverable).
-- If the user asks to CREATE Special notes / generate helpers, deliver the paste-ready block immediately — do not over-explain first.
-- If the question is general work advice with no app need, answer as a normal career coach — do not force ResumeForge features.
+════════════════════════════════════
+MODE 1 — PROFILE APPLICATION ANSWERS (highest priority when relevant)
+════════════════════════════════════
+When the user pastes or asks a hiring/client question (examples: "What experience do you have with SaaS?", "Have you worked with React?", "Describe a similar project", Upwork screening questions), you MUST:
+- Answer ONLY from FULL CANDIDATE PROFILE (skills, experience descriptions, projects, education, certifications, summary).
+- Write the answer as READY TO PASTE to the client: first person ("I…"), confident, specific, professional — like a strong Upwork proposal reply.
+- Pull concrete evidence: role titles, companies, project names, tech stacks, outcomes/metrics already in the profile. Quote/rephrase their real bullets — do not invent.
+- Connect the evidence to the question AND to ACTIVE JOB CONTEXT if a job/description is present (they are applying — articulate fit).
+- If the profile has only adjacent experience (e.g. web apps but not the word "SaaS"), say that honestly and map related work (multi-tenant apps, subscriptions, B2B dashboards, etc.) without claiming fake SaaS employers.
+- If there is truly no relevant experience, say so briefly and suggest what they could add to Profile — do NOT fabricate.
+- Length: usually 80–180 words per Upwork-style answer unless they ask for shorter/longer. Lead with the strongest proof, then 2–4 concrete bullets if helpful. If answering multiple questions, complete all of them — never cut off mid-sentence.
+- Plain text only in answers (no Markdown symbols).
+- Optionally end with 1 line: "Want this as Special notes for Generate?" only when useful.
 
-Mode detect:
-- Product / generation requests ("special notes", "how do I generate", "Upwork", "template", "humanize", "what should I set") → use product knowledge + profile/JD.
-- General career ("salary", "interview", "should I quit", workplace advice) → universal coach; mention ResumeForge only if it genuinely helps.
+Also do this when they ask: "answer this for me", "how should I reply", "based on my profile", "write my answer".
 
-Grounding:
-- Profile/experience facts come only from CANDIDATE PROFILE or what the user just typed.
-- Match job requirements to real experience/projects/skills when recommending what to emphasize.
-
+════════════════════════════════════
+MODE 2 — PRODUCT / SPECIAL NOTES
+════════════════════════════════════
 ${RESUMEFORGE_PRODUCT_GUIDE}
 
-${contextBits.length ? `\nLIVE CONTEXT:\n${contextBits.join('\n\n')}` : '\nLIVE CONTEXT: (no profile/job panel — ask if needed or use chat content)'}`;
+════════════════════════════════════
+MODE 3 — GENERAL
+════════════════════════════════════
+Normal career coach when not about their profile facts or the app.
+
+Tone: direct, practical. No AI fluff ("synergy", "passionate", "delve", "testament", "leverage" as verb, "cutting-edge").
+
+FORMATTING (strict — never break these):
+- Plain text only. NEVER use Markdown symbols: no # or ### headings, no **bold**, no __underline__, no *italics*, no --- rules, no fenced code blocks, no [text](url) links, no inline backticks.
+- Use short paragraphs. For lists use lines starting with "- " or "1) 2) 3)".
+- When answering several client/Upwork questions, finish EVERY question completely — do not stop mid-sentence.
+- Prefer one clear paste-ready block per question. Keep total reply complete even if it means slightly shorter bullets.
+
+Speed: prefer concise answers; expand for paste-ready client replies and Special notes drafts. Always finish the last sentence.
+
+Grounding rules (strict):
+- Skills / employers / metrics / projects must appear in the profile JSON or the user's message.
+- Generate creates documents; you prepare answers, Special notes, and coaching from the same profile Generate uses.
+
+${contextBits.length ? `\nLIVE CONTEXT:\n${contextBits.join('\n\n')}` : ''}`;
 
   const normalized = [];
   for (const m of messages) {
@@ -430,17 +479,47 @@ ${contextBits.length ? `\nLIVE CONTEXT:\n${contextBits.join('\n\n')}` : '\nLIVE 
     parts: [{ text: m.content }],
   }));
 
-  return chatWithModelFallback(genAI, {
-    systemInstruction,
-    history,
-    message: lastUser,
-  });
+  return stripChatMarkdown(
+    await chatWithModelFallback(genAI, {
+      systemInstruction,
+      history,
+      message: lastUser,
+    })
+  );
+}
+
+/** Strip Markdown so paste-ready Upwork answers stay clean plain text. */
+export function stripChatMarkdown(text) {
+  let t = String(text || '');
+  // fenced code blocks → inner text
+  t = t.replace(/```[\w-]*\n?([\s\S]*?)```/g, '$1');
+  // headings
+  t = t.replace(/^#{1,6}\s+/gm, '');
+  // bold / italic
+  t = t.replace(/\*\*\*([^*]+)\*\*\*/g, '$1');
+  t = t.replace(/\*\*([^*]+)\*\*/g, '$1');
+  t = t.replace(/__([^_]+)__/g, '$1');
+  // single *italic* / _italic_ (avoid touching list markers handled separately)
+  t = t.replace(/(^|[^*\n])\*([^*\n]+)\*(?!\*)/g, '$1$2');
+  t = t.replace(/(^|[^_\n])_([^_\n]+)_(?!_)/g, '$1$2');
+  // horizontal rules
+  t = t.replace(/^\s*([-*_]){3,}\s*$/gm, '');
+  // links / images
+  t = t.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
+  t = t.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  // inline code
+  t = t.replace(/`([^`]+)`/g, '$1');
+  // markdown bullets → plain dash
+  t = t.replace(/^\s*[*+]\s+/gm, '- ');
+  // collapse blank lines
+  t = t.replace(/\n{3,}/g, '\n\n');
+  return t.trim();
 }
 
 async function chatWithModelFallback(genAI, { systemInstruction, history, message }) {
   const generationConfig = {
-    temperature: 0.55,
-    maxOutputTokens: 1400,
+    temperature: 0.4,
+    maxOutputTokens: 8192,
   };
 
   async function run(modelName) {
@@ -451,10 +530,42 @@ async function chatWithModelFallback(genAI, { systemInstruction, history, messag
     });
     const chat = model.startChat({ history });
     const result = await chat.sendMessage(message);
-    return result.response.text();
+    const response = result.response;
+    let text = '';
+    try {
+      text = response.text();
+    } catch {
+      text = response.candidates?.[0]?.content?.parts
+        ?.map((p) => p.text || '')
+        .join('') || '';
+    }
+
+    const finish = String(
+      response.candidates?.[0]?.finishReason || ''
+    ).toUpperCase();
+
+    // If Gemini hit the output cap mid-reply, ask once to continue from the cut-off
+    if (
+      text &&
+      (finish === 'MAX_TOKENS' || finish === 'LENGTH') &&
+      !/[.!?)"']\s*$/.test(text.trim())
+    ) {
+      try {
+        const cont = await chat.sendMessage(
+          'Continue the previous answer from exactly where it stopped. Plain text only — no Markdown (no #, **, ---, backticks). Finish every remaining question completely.'
+        );
+        const more = cont.response.text();
+        if (more?.trim()) {
+          text = `${text.trimEnd()}\n${more.trim()}`;
+        }
+      } catch {
+        // keep truncated text if continuation fails
+      }
+    }
+
+    return text;
   }
 
-  // Prefer Flash for speed; fall back to Pro if Flash fails / quota issues
   try {
     return await run(CHAT_FAST_MODEL);
   } catch (error) {

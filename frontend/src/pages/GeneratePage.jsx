@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   api,
   getStoredProfileId,
@@ -17,6 +18,17 @@ import {
   GenerateSkeleton,
   PageHeader,
 } from '../components/ui.jsx';
+import { addGenerationToHistory } from '../store/historySlice.js';
+import { fetchProfile } from '../store/profileSlice.js';
+import {
+  clearGenerateResults,
+  setCoverLetter,
+  setDetectionStats,
+  setGenerateField,
+  setGenerateFields,
+  setGenerateResults,
+  setHumanizeStats,
+} from '../store/generateSlice.js';
 
 const LENGTH_PRESETS = [
   { label: 'Short', value: 800 },
@@ -175,10 +187,6 @@ function HumanizeCard({ stats }) {
   );
 }
 
-import { useDispatch, useSelector } from 'react-redux';
-import { addGenerationToHistory } from '../store/historySlice.js';
-import { fetchProfile } from '../store/profileSlice.js';
-
 export default function GeneratePage() {
   const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
@@ -186,31 +194,35 @@ export default function GeneratePage() {
   const profileId = authProfileId || getStoredProfileId();
 
   const profileState = useSelector((state) => state.profile);
+  const {
+    jobTitle,
+    companyName,
+    jobDescription,
+    coverLetterLength,
+    customLength,
+    outputMode,
+    resumeTemplate,
+    includeContact,
+    specialNotes,
+    resume,
+    coverLetter,
+    generationId,
+    humanizeStats,
+    detectionStats,
+  } = useSelector((state) => state.generate);
+
   const { core: profileCore, skills, experience, projects, education, certifications } = profileState;
   const profile = { ...profileCore, skills, experience, projects, education, certifications };
 
-  const [jobTitle, setJobTitle] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [jobDescription, setJobDescription] = useState('');
-  const [coverLetterLength, setCoverLetterLength] = useState(1200);
-  const [customLength, setCustomLength] = useState('');
-  const [outputMode, setOutputMode] = useState('both');
-  const [resumeTemplate, setResumeTemplate] = useState('color');
-  const [includeContact, setIncludeContact] = useState(true);
-  const [specialNotes, setSpecialNotes] = useState('');
-
-  const [resume, setResume] = useState(null);
-  const [coverLetter, setCoverLetter] = useState('');
-  const [generationId, setGenerationId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [health, setHealth] = useState(null);
   const [humanizing, setHumanizing] = useState(false);
-  const [humanizeStats, setHumanizeStats] = useState(null);
   const [detecting, setDetecting] = useState(false);
-  const [detectionStats, setDetectionStats] = useState(null);
+
+  const setField = (key, value) => dispatch(setGenerateField({ key, value }));
 
   const wantsResume = outputMode === 'both' || outputMode === 'resume';
   const wantsCover = outputMode === 'both' || outputMode === 'cover_letter';
@@ -232,31 +244,38 @@ export default function GeneratePage() {
     async function loadGeneration() {
       try {
         const gen = await api.getGeneration(gid);
-        setJobTitle(gen.job_title || '');
-        setCompanyName(gen.company_name || '');
-        setJobDescription(gen.job_description || '');
-        setResume(gen.generated_resume_json);
-        setCoverLetter(gen.generated_cover_letter || '');
-        setGenerationId(gen.id);
-        if (gen.output_mode) setOutputMode(gen.output_mode);
-        if (gen.resume_template) setResumeTemplate(gen.resume_template);
-        if (typeof gen.include_contact === 'boolean') {
-          setIncludeContact(gen.include_contact);
-        }
-        setSpecialNotes(gen.special_notes || '');
+        dispatch(
+          setGenerateFields({
+            jobTitle: gen.job_title || '',
+            companyName: gen.company_name || '',
+            jobDescription: gen.job_description || '',
+            resume: gen.generated_resume_json,
+            coverLetter: gen.generated_cover_letter || '',
+            generationId: gen.id,
+            outputMode: gen.output_mode || 'both',
+            resumeTemplate: gen.resume_template || 'color',
+            includeContact:
+              typeof gen.include_contact === 'boolean'
+                ? gen.include_contact
+                : true,
+            specialNotes: gen.special_notes || '',
+            humanizeStats: null,
+            detectionStats: null,
+          })
+        );
       } catch (err) {
         setError(err.message);
       }
     }
     loadGeneration();
-  }, [searchParams]);
+  }, [searchParams, dispatch]);
 
   async function handleGenerate(e) {
     e.preventDefault();
     setError('');
     setCopied(false);
-    setHumanizeStats(null);
-    setDetectionStats(null);
+    dispatch(setHumanizeStats(null));
+    dispatch(setDetectionStats(null));
 
     if (!profileId) {
       setError('Create a profile first on the Profile page.');
@@ -278,19 +297,24 @@ export default function GeneratePage() {
         include_contact: includeContact,
         special_notes: specialNotes.trim() || undefined,
       });
-      setResume(result.resume || null);
-      setCoverLetter(result.cover_letter || '');
-      setGenerationId(result.generation_id);
-      if (result.output_mode) setOutputMode(result.output_mode);
-      if (result.resume_template) setResumeTemplate(result.resume_template);
-      if (typeof result.include_contact === 'boolean') {
-        setIncludeContact(result.include_contact);
-      }
-      if (typeof result.special_notes === 'string') {
-        setSpecialNotes(result.special_notes);
-      }
+      dispatch(
+        setGenerateResults({
+          resume: result.resume || null,
+          coverLetter: result.cover_letter || '',
+          generationId: result.generation_id,
+          outputMode: result.output_mode || outputMode,
+          resumeTemplate: result.resume_template || resumeTemplate,
+          includeContact:
+            typeof result.include_contact === 'boolean'
+              ? result.include_contact
+              : includeContact,
+          specialNotes:
+            typeof result.special_notes === 'string'
+              ? result.special_notes
+              : specialNotes,
+        })
+      );
 
-      // Add to Redux History Store automatically
       dispatch(
         addGenerationToHistory({
           id: result.generation_id,
@@ -308,9 +332,7 @@ export default function GeneratePage() {
       );
     } catch (err) {
       setError(err.message);
-      setResume(null);
-      setCoverLetter('');
-      setGenerationId(null);
+      dispatch(clearGenerateResults());
     } finally {
       setLoading(false);
     }
@@ -349,15 +371,17 @@ export default function GeneratePage() {
     setError('');
     try {
       const result = await api.humanizeCoverLetter(generationId, coverLetter);
-      setCoverLetter(result.cover_letter || '');
-      setHumanizeStats({
-        engine: result.engine,
-        warning: result.warning,
-        improved: result.improved,
-        metrics: result.metrics,
-      });
+      dispatch(setCoverLetter(result.cover_letter || ''));
+      dispatch(
+        setHumanizeStats({
+          engine: result.engine,
+          warning: result.warning,
+          improved: result.improved,
+          metrics: result.metrics,
+        })
+      );
       if (result.after?.detection) {
-        setDetectionStats(result.after.detection);
+        dispatch(setDetectionStats(result.after.detection));
       }
     } catch (err) {
       setError(err.message);
@@ -372,7 +396,7 @@ export default function GeneratePage() {
     setError('');
     try {
       const result = await api.detectCoverLetter(generationId, coverLetter);
-      setDetectionStats(result);
+      dispatch(setDetectionStats(result));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -429,7 +453,7 @@ export default function GeneratePage() {
             <ChoiceCards
               options={OUTPUT_MODES}
               value={outputMode}
-              onChange={setOutputMode}
+              onChange={(id) => setField('outputMode', id)}
             />
           </div>
 
@@ -444,7 +468,7 @@ export default function GeneratePage() {
                     <button
                       key={opt.id}
                       type="button"
-                      onClick={() => setResumeTemplate(opt.id)}
+                      onClick={() => setField('resumeTemplate', opt.id)}
                       className={`rf-choice ${active ? 'rf-choice-active' : ''} text-left`}
                       aria-pressed={active}
                     >
@@ -509,7 +533,7 @@ export default function GeneratePage() {
               <ChoiceCards
                 options={CONTACT_MODES}
                 value={includeContact ? 'with' : 'without'}
-                onChange={(id) => setIncludeContact(id === 'with')}
+                onChange={(id) => setField('includeContact', id === 'with')}
               />
               <p
                 className={`mt-2 text-xs leading-relaxed ${
@@ -528,14 +552,14 @@ export default function GeneratePage() {
             <Field
               label="Job title"
               value={jobTitle}
-              onChange={(e) => setJobTitle(e.target.value)}
+              onChange={(e) => setField('jobTitle', e.target.value)}
               required
               placeholder="Senior Software Engineer"
             />
             <Field
               label="Company name"
               value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
+              onChange={(e) => setField('companyName', e.target.value)}
               required
               placeholder="Acme Corporation"
             />
@@ -546,7 +570,7 @@ export default function GeneratePage() {
             as="textarea"
             className="min-h-[200px]"
             value={jobDescription}
-            onChange={(e) => setJobDescription(e.target.value)}
+            onChange={(e) => setField('jobDescription', e.target.value)}
             required
             placeholder="Paste the full job description here — the more detail, the better the tailoring…"
           />
@@ -557,7 +581,7 @@ export default function GeneratePage() {
               as="textarea"
               className="min-h-[110px]"
               value={specialNotes}
-              onChange={(e) => setSpecialNotes(e.target.value.slice(0, 4000))}
+              onChange={(e) => setField('specialNotes', e.target.value.slice(0, 4000))}
               maxLength={4000}
               placeholder={
                 'Tell Gemini what to add, emphasize, or leave out for THIS job only.\nExamples:\n• Emphasize React and Node; de-emphasize WordPress\n• Highlight the Tamagn Check project; skip older internships\n• Mention I led the payments migration for 6 months\n• Keep the cover letter shorter and more technical'
@@ -582,8 +606,8 @@ export default function GeneratePage() {
                     key={p.value}
                     type="button"
                     onClick={() => {
-                      setCoverLetterLength(p.value);
-                      setCustomLength('');
+                      setField('coverLetterLength', p.value);
+                      setField('customLength', '');
                     }}
                     className={`rf-btn !min-h-9 !px-3.5 !text-xs !rounded-lg ${
                       !customLength && coverLetterLength === p.value
@@ -604,7 +628,7 @@ export default function GeneratePage() {
                     placeholder="chars"
                     className="rf-input !w-24 !py-1.5 !px-2.5 !text-sm"
                     value={customLength}
-                    onChange={(e) => setCustomLength(e.target.value)}
+                    onChange={(e) => setField('customLength', e.target.value)}
                   />
                 </label>
               </div>
@@ -663,7 +687,7 @@ export default function GeneratePage() {
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => setResumeTemplate(t.id)}
+                      onClick={() => setField('resumeTemplate', t.id)}
                       className={`rf-btn !min-h-9 !px-3 !text-xs !rounded-lg ${
                         resumeTemplate === t.id ? 'rf-btn-primary' : 'rf-btn-ghost'
                       }`}
@@ -673,7 +697,7 @@ export default function GeneratePage() {
                   ))}
                   <button
                     type="button"
-                    onClick={() => setIncludeContact((v) => !v)}
+                    onClick={() => setField('includeContact', !includeContact)}
                     className={`rf-btn !min-h-9 !px-3 !text-xs !rounded-lg ${
                       includeContact ? 'rf-btn-secondary' : 'rf-btn-primary'
                     }`}

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { requireAuth } from '../middleware/auth.js';
+import { query } from '../db/pool.js';
 import { chatCareerCoach, isPlaceholderGeminiKey } from '../services/gemini.js';
 import { getFullProfile } from './profile.js';
 
@@ -20,6 +21,22 @@ const chatLimiter = rateLimit({
 const MAX_MESSAGE = 12000;
 const MAX_HISTORY = 20;
 const MAX_JOB_DESCRIPTION = 20000;
+
+async function resolveUserProfile(userId, profileId) {
+  if (profileId) {
+    const profile = await getFullProfile(profileId, userId);
+    if (profile) return profile;
+  }
+  const owned = await query(
+    `SELECT id FROM profiles
+     WHERE user_id = $1
+     ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST
+     LIMIT 1`,
+    [userId]
+  );
+  if (!owned.rows.length) return null;
+  return getFullProfile(owned.rows[0].id, userId);
+}
 
 router.post('/', chatLimiter, async (req, res) => {
   try {
@@ -54,32 +71,36 @@ router.post('/', chatLimiter, async (req, res) => {
     const messages = [
       ...prior
         .map((m) => ({
-          role: m?.role === 'assistant' || m?.role === 'model' ? 'assistant' : 'user',
+          role:
+            m?.role === 'assistant' || m?.role === 'model'
+              ? 'assistant'
+              : 'user',
           content: String(m?.content || '').trim().slice(0, MAX_MESSAGE),
         }))
         .filter((m) => m.content),
       { role: 'user', content: userMessage },
     ];
 
-    let profile = null;
-    if (profile_id) {
-      profile = await getFullProfile(profile_id, req.user.id);
-      if (!profile) {
-        return res.status(404).json({ error: 'Profile not found' });
-      }
-    }
+    // Same profile source as Generate — always attached when the user has one
+    const profile = await resolveUserProfile(req.user.id, profile_id || null);
 
     const reply = await chatCareerCoach({
       messages,
       profile,
       jobTitle: String(job_title || '').trim().slice(0, 200),
       companyName: String(company_name || '').trim().slice(0, 200),
-      jobDescription: String(job_description || '').trim().slice(0, MAX_JOB_DESCRIPTION),
+      jobDescription: String(job_description || '')
+        .trim()
+        .slice(0, MAX_JOB_DESCRIPTION),
     });
 
     res.json({
       reply: String(reply || '').trim(),
       role: 'assistant',
+      profile_attached: Boolean(profile),
+      profile_id: profile?.id || null,
+      profile_name: profile?.full_name || null,
+      profile_title: profile?.title || null,
     });
   } catch (err) {
     console.error('chat error:', err);
