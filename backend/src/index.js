@@ -20,19 +20,30 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 
-// CORS setup supporting custom frontend domains in production
-const allowedOrigins = process.env.CLIENT_ORIGIN
-  ? process.env.CLIENT_ORIGIN.split(',').map((o) => o.trim())
-  : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5000'];
+const allowedOrigins = (process.env.CLIENT_ORIGIN || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+if (!allowedOrigins.length) {
+  console.warn(
+    'CLIENT_ORIGIN is not set in backend/.env — browser requests from the frontend will be blocked by CORS.'
+  );
+}
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      // Non-browser clients (curl, server-to-server) often omit Origin
+      if (!origin) {
         callback(null, true);
-      } else {
-        callback(null, true); // Allow during production testing
+        return;
       }
+      if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
     },
     credentials: true,
   })
