@@ -3,6 +3,12 @@ const PROFILE_KEY = 'resumeforge_profile_id';
 const USER_KEY = 'resumeforge_user';
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
 
+if (!API_BASE_URL && import.meta.env.PROD) {
+  console.error(
+    '[ResumeForge] VITE_API_BASE_URL is missing. API calls will hit this site instead of your backend. Set it in Vercel Environment Variables and redeploy.'
+  );
+}
+
 function buildApiUrl(path) {
   if (!path) return API_BASE_URL;
   if (/^https?:\/\//i.test(path)) return path;

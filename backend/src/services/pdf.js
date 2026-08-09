@@ -1,4 +1,3 @@
-import puppeteer from 'puppeteer';
 import { renderResumeHtml } from '../templates/resume.html.js';
 import { renderSimpleResumeHtml } from '../templates/resume-simple.html.js';
 
@@ -14,6 +13,55 @@ export function renderResumeByTemplate(
   return renderResumeHtml(resume, profile, options);
 }
 
+/**
+ * Launch Chromium for PDF.
+ * Local: full `puppeteer` (downloads Chrome).
+ * Render / cloud: `@sparticuz/chromium` + `puppeteer-core`.
+ */
+async function launchBrowser() {
+  const commonArgs = [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--font-render-hinting=none',
+  ];
+
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    const puppeteer = (await import('puppeteer-core')).default;
+    return puppeteer.launch({
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+      headless: true,
+      args: commonArgs,
+    });
+  }
+
+  // Render sets RENDER=true. Also honor an explicit flag.
+  const useSparticuz =
+    process.env.USE_SPARTICUZ_CHROMIUM === '1' ||
+    process.env.RENDER === 'true' ||
+    Boolean(process.env.RENDER);
+
+  if (useSparticuz) {
+    const puppeteer = (await import('puppeteer-core')).default;
+    const chromium = (await import('@sparticuz/chromium')).default;
+    chromium.setGraphicsMode = false;
+
+    return puppeteer.launch({
+      args: [...chromium.args, ...commonArgs],
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+  }
+
+  const puppeteer = (await import('puppeteer')).default;
+  return puppeteer.launch({
+    headless: true,
+    args: commonArgs,
+  });
+}
+
 export async function generateResumePdf(
   resume,
   profile,
@@ -22,14 +70,23 @@ export async function generateResumePdf(
 ) {
   const html = renderResumeByTemplate(resume, profile, template, options);
 
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
+  let browser;
+  try {
+    browser = await launchBrowser();
+  } catch (err) {
+    const tip =
+      'PDF engine failed to start Chromium. On Render this needs @sparticuz/chromium; locally run npm install in backend.';
+    const message = err?.message || String(err);
+    throw new Error(`${tip} (${message})`);
+  }
 
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    // HTML is fully inline — avoid networkidle timeouts in cloud
+    await page.setContent(html, {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000,
+    });
 
     const overflow = await page.evaluate(() => {
       const el = document.querySelector('.page');
@@ -52,7 +109,7 @@ export async function generateResumePdf(
 
     return pdf;
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
   }
 }
 
