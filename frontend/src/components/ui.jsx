@@ -49,7 +49,7 @@ export function BrandMark({ showTagline = true, compact = false }) {
       <Logo className={compact ? 'h-8 w-8 shrink-0' : 'h-9 w-9 shrink-0'} />
       <div className="min-w-0">
         <p
-          className={`font-display font-semibold tracking-tight leading-none text-navy ${
+          className={`font-display font-bold tracking-tight leading-none text-navy ${
             compact ? 'text-lg' : 'text-xl md:text-[1.35rem]'
           }`}
         >
@@ -57,7 +57,7 @@ export function BrandMark({ showTagline = true, compact = false }) {
         </p>
         {showTagline && !compact && (
           <p className="hidden sm:block text-[12px] font-medium text-ink-muted mt-0.5 truncate">
-            Tailored resumes & cover letters
+            Real profile. Per-job fit.
           </p>
         )}
       </div>
@@ -250,10 +250,10 @@ export function Card({
 export function CardTitle({ children, eyebrow }) {
   return (
     <div className="mb-5">
-      {eyebrow && (
-        <p className="rf-eyebrow mb-1">{eyebrow}</p>
-      )}
-      <h2 className="font-display text-xl font-semibold text-navy tracking-tight leading-tight">
+      {eyebrow ? (
+        <p className="text-sm font-medium text-ink-muted mb-1">{eyebrow}</p>
+      ) : null}
+      <h2 className="font-display text-xl font-bold text-navy tracking-tight leading-tight">
         {children}
       </h2>
     </div>

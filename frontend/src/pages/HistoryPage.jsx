@@ -176,7 +176,7 @@ export default function HistoryPage() {
     <div className="space-y-5 sm:space-y-6 rf-stagger">
       <PageHeader
         title="History"
-        subtitle="Reopen past applications, download PDFs, or copy cover letters."
+        subtitle="Reopen past applications, download resume PDFs, or copy cover letters."
         action={
           items.length > 0 && (
             <span className="rf-badge rf-badge-accent">

@@ -1,73 +1,66 @@
-import { PageHeader, Card, Button } from '../components/ui.jsx';
+import { PageHeader } from '../components/ui.jsx';
 import FAQSection from '../components/FAQSection.jsx';
 import { NavLink } from 'react-router-dom';
-import { IconSparkles, IconHelp, IconShield, IconFileText } from '../components/ui.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 export default function FAQPage() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <div className="space-y-10 rf-enter">
-      <PageHeader
-        title="Frequently Asked Questions"
-        subtitle="Find quick answers to common questions about generating resumes, ATS optimization, and account privacy."
-      />
-
-      {/* Feature Highlights */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="!p-5 space-y-2">
-          <div className="w-9 h-9 rounded-xl bg-accent-soft text-accent flex items-center justify-center">
-            <IconSparkles className="w-5 h-5" />
+      <div className="grid items-end gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <PageHeader
+          title="Answers before you trust AI with your career"
+          subtitle="Straight talk on how ResumeForge uses your profile, what Upwork-safe means, Special notes, chat, and privacy — no fluff metrics."
+        />
+        <div className="relative overflow-hidden">
+          <img
+            src="/images/resume-work.jpg"
+            alt=""
+            className="h-32 w-full object-cover sm:h-36"
+            loading="lazy"
+          />
+          <div className="pointer-events-none absolute bottom-3 right-3 h-14 w-14 opacity-90">
+            <div className="rf-radar h-full w-full">
+              <div className="rf-radar-sweep" aria-hidden />
+            </div>
           </div>
-          <h3 className="font-bold text-navy text-sm">AI Profile Matching</h3>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            Learns your real experience and aligns it to target job requirements instantly.
-          </p>
-        </Card>
-
-        <Card className="!p-5 space-y-2">
-          <div className="w-9 h-9 rounded-xl bg-accent-soft text-accent flex items-center justify-center">
-            <IconFileText className="w-5 h-5" />
-          </div>
-          <h3 className="font-bold text-navy text-sm">ATS Optimized PDF</h3>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            Single-column clean formatting engineered to pass modern hiring algorithms.
-          </p>
-        </Card>
-
-        <Card className="!p-5 space-y-2">
-          <div className="w-9 h-9 rounded-xl bg-accent-soft text-accent flex items-center justify-center">
-            <IconShield className="w-5 h-5" />
-          </div>
-          <h3 className="font-bold text-navy text-sm">Strict Privacy</h3>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            Your data is stored securely and never sold or used for public AI model training.
-          </p>
-        </Card>
+        </div>
       </div>
 
-      {/* FAQ Interactive Accordion */}
+      <p className="max-w-3xl text-sm leading-relaxed text-ink-muted sm:text-base">
+        Generate and Chat read your saved Profile only. Upwork-safe mode strips contact
+        channels. Special notes reshape one application without permanently editing Profile.
+      </p>
+
       <FAQSection showHeader={false} />
 
-      {/* CTA Box */}
-      <Card accent className="text-center !p-8 sm:!p-10 space-y-4 max-w-3xl mx-auto">
-        <div className="w-12 h-12 rounded-2xl bg-accent-soft text-navy flex items-center justify-center mx-auto">
-          <IconHelp className="w-6 h-6" />
-        </div>
-        <h2 className="font-display text-2xl font-bold text-navy">Still have questions?</h2>
-        <p className="text-sm text-ink-muted max-w-md mx-auto">
-          Ready to create your tailored resume and boost your interview call rates? Get started in under 2 minutes.
+      <div className="border-y border-navy bg-navy px-5 py-8 text-center text-white sm:px-8 sm:py-10">
+        <h2 className="font-display text-2xl font-bold tracking-tight">
+          Still deciding? Try a free profile build.
+        </h2>
+        <p className="mx-auto mt-3 max-w-md text-sm text-white/80">
+          The fastest way to evaluate ResumeForge is to save your experience and generate once
+          for a real job you are applying to.
         </p>
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-          <NavLink to="/generate">
-            <Button variant="primary" className="!px-6">
-              <IconSparkles className="w-4 h-4 text-accent" />
-              Generate Resume Now
-            </Button>
-          </NavLink>
-          <NavLink to="/">
-            <Button variant="secondary">Go to Profile</Button>
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
+          {isAuthenticated ? (
+            <NavLink to="/generate" className="rf-btn rf-btn-accent !min-h-11">
+              Go to Generate
+            </NavLink>
+          ) : (
+            <NavLink to="/signup" className="rf-btn rf-btn-accent !min-h-11">
+              Create free account
+            </NavLink>
+          )}
+          <NavLink
+            to="/chat"
+            className="rf-btn !min-h-11 !border-white/25 !bg-white/10 !text-white"
+          >
+            Open Chat
           </NavLink>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

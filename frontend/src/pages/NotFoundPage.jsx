@@ -9,17 +9,16 @@ export default function NotFoundPage() {
           <Logo className="h-12 w-12" />
         </div>
         <div className="space-y-2">
-          <span className="text-xs font-bold uppercase tracking-widest text-accent">Error 404</span>
-          <h1 className="font-display text-3xl font-bold text-navy">Page Not Found</h1>
+          <h1 className="font-display text-3xl font-bold text-navy">Page not found</h1>
           <p className="text-sm text-ink-muted leading-relaxed">
-            The page you are looking for doesn’t exist or has been moved. Let’s get you back on track!
+            That URL isn’t in ResumeForge. Head home to generate, chat, or update your profile.
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           <NavLink to="/">
             <Button variant="primary">
               <IconHome className="w-4 h-4" />
-              Go to Home Page
+              Back to Home
             </Button>
           </NavLink>
         </div>

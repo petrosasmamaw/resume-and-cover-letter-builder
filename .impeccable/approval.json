@@ -1,0 +1,16 @@
+{
+  "schema": "impeccable.approval/1",
+  "status": "approved",
+  "approvedAt": "2026-08-08",
+  "seed": "72c51568",
+  "mode": "persuade",
+  "world": "Match radar desk",
+  "worldKey": "grounded-6",
+  "surface": "marketing-home-auth-faq",
+  "notes": "User selected Match radar desk from concept roll; no raster mock under .impeccable/mocks. Photography assets shipped in frontend/public/images/.",
+  "assets": [
+    "frontend/public/images/hero-desk.jpg",
+    "frontend/public/images/resume-work.jpg",
+    "frontend/public/images/apply-together.jpg"
+  ]
+}

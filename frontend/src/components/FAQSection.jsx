@@ -5,58 +5,72 @@ export const FAQ_DATA = [
   {
     id: 1,
     category: 'General',
-    question: 'What is ResumeForge and how does it work?',
+    question: 'What is ResumeForge, in one sentence?',
     answer:
-      'ResumeForge is an AI-powered document generator that takes your verified professional profile (experiences, projects, skills, education) and automatically tailors targeted resumes and cover letters for specific job descriptions. It scores your profile match, highlights missing keywords, and optimizes for Applicant Tracking Systems (ATS).',
+      'ResumeForge takes the professional profile you save once, then generates job-specific resumes and cover letters that stay grounded in that profile — plus chat answers for client questions and marketplace-safe contact options.',
   },
   {
     id: 2,
     category: 'General',
     question: 'Is ResumeForge free to use?',
     answer:
-      'Yes! You can create your master profile, generate tailored resumes, analyze job description matches, and download PDF or HTML versions for free.',
+      'Yes. You can create an account, build a profile, generate documents, use Career chat, and download PDFs without paying to start. Any future paid plans would be announced in the product — nothing is hidden behind fake “enterprise only” walls today.',
   },
   {
     id: 3,
     category: 'AI & Match',
-    question: 'How does the AI Requirement Match scoring work?',
+    question: 'Will the AI invent jobs or skills I do not have?',
     answer:
-      'Our AI analyzes the job posting to extract key required skills, years of experience, and role expectations. It then cross-references your master profile to calculate a match percentage score, listing exact strengths, matched keywords, and suggestions to boost your score.',
+      'No. Your Profile (and Special notes you write for one generation) is the fact base. The model reorders, emphasizes, and rephrases real experience for a posting. If something is missing, add it to Profile or Special notes — do not expect the model to fabricate it.',
   },
   {
     id: 4,
     category: 'AI & Match',
-    question: 'Will the generated resume pass ATS (Applicant Tracking Systems)?',
+    question: 'What is Requirement Match?',
     answer:
-      'Absolutely. ResumeForge generates clean, single-column, standard-compliant HTML and PDF documents formatted specifically to parse cleanly through modern ATS tools like Greenhouse, Lever, Workday, and Taleo.',
+      'After a generation that includes a resume, ResumeForge can show how pieces of the job posting line up with skills, roles, or projects from your profile. Treat it as a coaching lens for Special notes and interviews — not a guarantee of hire.',
   },
   {
     id: 5,
     category: 'Privacy',
-    question: 'Is my personal information secure?',
+    question: 'Who can see my profile and documents?',
     answer:
-      'Your privacy is our top priority. Your profile data and generated documents are stored securely with encrypted databases and are never shared with third parties or used to train public AI models.',
+      'Your data is scoped to your authenticated account in this app. We do not sell your résumé content, and you should treat generated PDFs as documents you alone choose to send to employers or clients.',
   },
   {
     id: 6,
     category: 'Export',
-    question: 'What formats can I export my resume and cover letter in?',
+    question: 'Which formats can I export?',
     answer:
-      'You can instantly preview, print, or download your generated resumes and cover letters in high-resolution PDF format, standard HTML, or plain text.',
+      'You can preview on the Generate page and download a resume PDF. Cover letters can be copied as text. Templates are ATS-oriented single-column layouts.',
   },
   {
     id: 7,
     category: 'Export',
-    question: 'Can I edit the generated content before sending it?',
+    question: 'What does Upwork-safe (no contact) mean?',
     answer:
-      'Yes! Every generated resume and cover letter can be edited inline or saved to your personal history for quick access and tweaking at any time.',
+      'It hides email, phone, address, LinkedIn, GitHub, and portfolio from the resume PDF so proposals are less likely to violate marketplace rules against off-platform contact. Skills, experience, and projects remain. Use “With contact” for company or email applications.',
   },
   {
     id: 8,
     category: 'General',
-    question: 'Can I generate cover letters as well?',
+    question: 'How does Career chat differ from Generate?',
     answer:
-      'Yes, ResumeForge generates matching, professionally crafted cover letters tailored to both your profile and the specific company and job title you are applying for.',
+      'Chat uses the same profile to help you answer Upwork/client questions, draft Special notes, and talk through fit. Generate produces the formal resume and cover letter documents for that job.',
+  },
+  {
+    id: 9,
+    category: 'AI & Match',
+    question: 'What are Special notes?',
+    answer:
+      'Optional instructions for one generation only — for example “emphasize the payments migration; omit WordPress.” They do not permanently change Profile. Chat can draft paste-ready Special notes from a job description.',
+  },
+  {
+    id: 10,
+    category: 'Privacy',
+    question: 'Can I use this for freelancing and traditional job hunting?',
+    answer:
+      'Yes. The same profile feeds both. Switch contact mode, Special notes, and templates to match marketplace proposals versus company applications.',
   },
 ];
 
@@ -82,12 +96,11 @@ export default function FAQSection({ limit = null, showHeader = true, compact = 
     <div className="w-full space-y-6">
       {showHeader && (
         <div className="max-w-2xl space-y-2">
-          <p className="rf-eyebrow">FAQ</p>
-          <h2 className="font-display text-2xl md:text-3xl font-semibold text-navy">
-            Everything you need to know
+          <h2 className="font-display text-2xl md:text-3xl font-bold text-navy tracking-tight">
+            Common questions
           </h2>
-          <p className="rf-page-sub !mt-1">
-            Questions about generating resumes, ATS scoring, Special notes, and privacy.
+          <p className="text-sm sm:text-base text-ink-muted leading-relaxed">
+            Profile ground truth, Special notes, Upwork-safe contact, chat vs generate, and exports.
           </p>
         </div>
       )}

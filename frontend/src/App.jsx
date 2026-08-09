@@ -151,9 +151,11 @@ function Shell() {
   const location = useLocation();
   const isAuthPage =
     location.pathname === '/login' || location.pathname === '/signup';
+  const isHome =
+    location.pathname === '/' || location.pathname === '/home';
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col overflow-x-hidden">
       {/* ── Header ───────────────────────────────────────── */}
       <header className="sticky top-0 z-30 rf-glass">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
@@ -221,9 +223,11 @@ function Shell() {
 
       {/* ── Main Content ─────────────────────────────────── */}
       <main
-        className={`flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 ${
-          isAuthenticated ? 'pb-28 md:pb-12' : 'pb-12'
-        }`}
+        className={`flex-1 mx-auto w-full max-w-7xl ${
+          isHome
+            ? 'px-0 py-0'
+            : `px-4 sm:px-6 lg:px-8 ${isAuthPage ? 'py-4 sm:py-6' : 'py-5 sm:py-8 lg:py-10'}`
+        } ${isAuthPage ? 'pb-12' : 'pb-28 md:pb-12'}`}
       >
         <Routes>
           <Route path="/" element={<HomePage />} />

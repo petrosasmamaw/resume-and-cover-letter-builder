@@ -1,289 +1,290 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
-import {
-  Button,
-  Card,
-  IconCheck,
-  IconFileText,
-  IconTrendingUp,
-  IconShield,
-  IconZap,
-  IconHelp,
-  IconSparkles,
-} from '../components/ui.jsx';
+import { Button, IconCheck, IconHelp } from '../components/ui.jsx';
 import FAQSection from '../components/FAQSection.jsx';
 
 export default function HomePage() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <div className="space-y-16 md:space-y-20 rf-enter">
-      {/* Hero — brand-led, marketplace composition */}
-      <section className="relative -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-6 pb-14 md:pt-10 md:pb-16 overflow-hidden">
-        <div
-          className="absolute inset-0 -z-10"
-          style={{
-            background:
-              'linear-gradient(135deg, #f5fbf3 0%, #ffffff 42%, #eef3ee 100%)',
-          }}
+    <div className="rf-enter">
+      {/* First viewport — brand + headline + one CTA + radar only */}
+      <section className="rf-hero-bleed text-white">
+        <img
+          src="/images/hero-desk.jpg"
+          alt=""
+          width={1600}
+          height={1067}
+          fetchPriority="high"
         />
-        <div
-          className="absolute inset-y-0 right-0 w-1/2 -z-10 hidden md:block opacity-40"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle at 70% 40%, rgb(20 168 0 / 0.18), transparent 55%)',
-          }}
-        />
-
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-10 lg:gap-14 items-center">
-          <div className="space-y-6 max-w-xl">
-            <p className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-navy">
+        <div className="relative z-10 mx-auto flex min-h-[inherit] max-w-7xl flex-col justify-end gap-8 px-4 py-10 sm:px-6 sm:py-12 lg:flex-row lg:items-end lg:justify-between lg:gap-12 lg:px-8 lg:py-14">
+          <div className="max-w-xl space-y-5">
+            <p className="font-display text-3xl sm:text-4xl font-bold tracking-tight">
               ResumeForge
             </p>
-            <h1 className="font-display text-[1.85rem] sm:text-[2.4rem] lg:text-[2.75rem] font-semibold tracking-tight text-navy leading-[1.15]">
-              Build job-ready resumes that match the role you want
+            <h1 className="font-display text-[1.85rem] sm:text-[2.55rem] lg:text-[2.85rem] font-bold leading-[1.12] tracking-tight">
+              Paste the job. Lock your real experience to the fit that wins interviews.
             </h1>
-            <p className="text-base sm:text-lg text-ink-muted leading-relaxed">
-              Paste a job description. We tailor your real profile into an ATS-friendly
-              resume and cover letter — like a pro application workspace.
-            </p>
-            <div className="flex flex-wrap items-center gap-3 pt-1">
+            <div className="pt-1">
               {isAuthenticated ? (
-                <NavLink to="/generate">
-                  <Button variant="accent" className="!px-6 !min-h-11 !text-[0.95rem]">
-                    Find your next fit
-                  </Button>
+                <NavLink
+                  to="/generate"
+                  className="rf-btn rf-btn-accent !min-h-12 !px-6 !text-base w-full sm:w-auto"
+                >
+                  Generate for this job
                 </NavLink>
               ) : (
-                <>
-                  <NavLink to="/signup">
-                    <Button variant="accent" className="!px-6 !min-h-11 !text-[0.95rem]">
-                      Get started
-                    </Button>
-                  </NavLink>
-                  <NavLink to="/login">
-                    <Button variant="secondary" className="!px-5 !min-h-11">
-                      Log in
-                    </Button>
-                  </NavLink>
-                </>
+                <NavLink
+                  to="/signup"
+                  className="rf-btn rf-btn-accent !min-h-12 !px-6 !text-base w-full sm:w-auto"
+                >
+                  Create free account
+                </NavLink>
               )}
             </div>
-            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-muted pt-1">
-              <span className="inline-flex items-center gap-1.5">
-                <IconCheck className="w-4 h-4 text-accent" /> Free to start
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <IconCheck className="w-4 h-4 text-accent" /> ATS-safe PDFs
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <IconCheck className="w-4 h-4 text-accent" /> Upwork-safe contact mode
-              </span>
-            </div>
           </div>
 
-          <div className="relative">
-            <div className="rounded-xl border border-line bg-panel shadow-lift overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-line bg-accent-pale flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold text-accent-dim">Job match preview</p>
-                  <p className="text-sm font-semibold text-navy">Senior Frontend Engineer</p>
-                </div>
-                <span className="inline-flex items-center justify-center h-11 w-11 rounded-full bg-accent text-white text-sm font-bold shadow-soft">
-                  92%
-                </span>
-              </div>
-              <div className="p-5 space-y-3">
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent-soft text-accent">
-                    <IconCheck className="w-3 h-3" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold text-navy">Strong overlap</p>
-                    <p className="text-sm text-ink-muted">
-                      React, TypeScript, and API work pulled from your profile
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent-soft text-accent">
-                    <IconSparkles className="w-3 h-3" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold text-navy">Special notes ready</p>
-                    <p className="text-sm text-ink-muted">
-                      Emphasize shipping velocity; deprioritize unrelated tooling
-                    </p>
-                  </div>
-                </div>
-                <div className="rounded-lg border border-line bg-surface px-4 py-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint mb-1">
-                    Next step
-                  </p>
-                  <p className="text-sm text-ink">
-                    Generate → PDF resume + cover letter in under two minutes
-                  </p>
-                </div>
+          <div className="mx-auto w-full max-w-[220px] shrink-0 sm:max-w-[240px] lg:mx-0">
+            <div className="rf-radar w-full">
+              <div className="rf-radar-sweep" aria-hidden />
+              <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
+                <p className="text-[11px] font-bold tracking-wide text-[#9fd49a]">
+                  FIT SIGNAL
+                </p>
+                <p className="mt-1 font-display text-4xl font-bold text-white">92%</p>
+                <p className="mt-1 text-xs leading-snug text-white/70">
+                  Synthetic demo dial — your score comes from your profile + JD
+                </p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Trust strip */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 max-w-5xl mx-auto text-center">
-        {[
-          { value: '10k+', label: 'Documents generated' },
-          { value: '98%', label: 'ATS-friendly layouts' },
-          { value: '3.5x', label: 'More interview callbacks' },
-          { value: '<2m', label: 'Average create time' },
-        ].map((s) => (
-          <div key={s.label} className="space-y-1">
-            <p className="font-display text-2xl sm:text-3xl font-semibold text-navy">
-              {s.value}
+      <div className="mx-auto max-w-7xl space-y-14 px-4 py-12 sm:px-6 md:space-y-20 md:py-16 lg:px-8">
+        {/* Deferred hero support — below first viewport */}
+        <section className="max-w-2xl space-y-4">
+          <p className="text-base leading-relaxed text-ink-muted sm:text-lg">
+            One honest profile. Resumes, cover letters, and Upwork-ready answers — tailored
+            per application, never inventing employers or metrics.
+          </p>
+          <ul className="flex flex-col gap-y-2 text-sm text-ink sm:flex-row sm:flex-wrap sm:gap-x-5">
+            <li className="inline-flex items-center gap-1.5">
+              <IconCheck className="h-4 w-4 text-accent" /> Profile is ground truth
+            </li>
+            <li className="inline-flex items-center gap-1.5">
+              <IconCheck className="h-4 w-4 text-accent" /> Upwork-safe contact mode
+            </li>
+            <li className="inline-flex items-center gap-1.5">
+              <IconCheck className="h-4 w-4 text-accent" /> ATS-safe PDF export
+            </li>
+          </ul>
+          {!isAuthenticated ? (
+            <p className="text-sm text-ink-muted">
+              Already forging applications?{' '}
+              <NavLink
+                to="/login"
+                className="font-bold text-accent-dim underline-offset-2 hover:underline"
+              >
+                Log in
+              </NavLink>
             </p>
-            <p className="text-sm text-ink-muted">{s.label}</p>
+          ) : null}
+        </section>
+
+        <section className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
+          <div className="order-2 overflow-hidden md:order-1">
+            <img
+              src="/images/resume-work.jpg"
+              alt="Laptop and notes on a desk during an application session"
+              className="h-56 w-full object-cover sm:h-72"
+              loading="lazy"
+              width={1400}
+              height={900}
+            />
           </div>
-        ))}
-      </section>
+          <div className="order-1 space-y-4 md:order-2">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-navy sm:text-3xl">
+              Built for the desks where applications actually get done
+            </h2>
+            <p className="text-base leading-relaxed text-ink-muted">
+              Freelancers on marketplaces and candidates emailing companies share the same
+              problem: every posting wants a different story from the same career. ResumeForge
+              keeps one source of truth, then tunes emphasis with Special notes for that job only.
+            </p>
+            <ul className="space-y-3 text-sm text-ink">
+              {[
+                'Profile skills, roles, and projects stay yours — AI reorders and rephrases, it does not invent.',
+                'Chat answers Upwork client questions from that same profile, ready to paste.',
+                'Hide contact channels when a marketplace bans off-site details.',
+              ].map((line) => (
+                <li key={line} className="flex gap-2.5">
+                  <IconCheck className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
 
-      {/* How it works */}
-      <section className="max-w-5xl mx-auto space-y-8">
-        <div className="max-w-xl">
-          <p className="rf-eyebrow">How it works</p>
-          <h2 className="font-display text-2xl sm:text-3xl font-semibold text-navy mt-1">
-            From master profile to tailored application
-          </h2>
-          <p className="rf-page-sub !mt-2">
-            One profile. Unlimited targeted resumes and letters for the jobs you apply to.
-          </p>
-        </div>
+        {/* Single non-card sequence */}
+        <section className="space-y-6">
+          <div className="max-w-2xl space-y-2">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-navy sm:text-3xl">
+              Three moves from blank to sent
+            </h2>
+            <p className="text-ink-muted">
+              Mobile-first workflow: save once, tailor often, download when ready.
+            </p>
+          </div>
+          <ol className="divide-y divide-line border-y border-line">
+            {[
+              {
+                title: 'Save your career once',
+                body: 'Skills, roles, projects, education — your Profile is the only fact base Generate and Chat read.',
+              },
+              {
+                title: 'Paste the posting',
+                body: 'Add title, company, description. Optional Special notes or Chat drafts them from your experience.',
+              },
+              {
+                title: 'Generate & ship',
+                body: 'Preview resume and cover letter, toggle Upwork-safe contact, download ATS-safe PDF.',
+              },
+            ].map((step, index) => (
+              <li
+                key={step.title}
+                className="grid gap-2 py-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-6 sm:py-6"
+              >
+                <span className="font-display text-sm font-bold text-accent tabular-nums">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <div className="space-y-1">
+                  <h3 className="font-display text-lg font-bold text-navy">{step.title}</h3>
+                  <p className="text-sm leading-relaxed text-ink-muted">{step.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
 
-        <div className="grid md:grid-cols-3 gap-5">
-          {[
-            {
-              n: '1',
-              title: 'Save your experience once',
-              body: 'Skills, roles, projects, and education stay in your Profile — your source of truth.',
-            },
-            {
-              n: '2',
-              title: 'Paste the job you want',
-              body: 'Add title, company, and description. Optionally draft Special notes in Chat first.',
-            },
-            {
-              n: '3',
-              title: 'Generate & download',
-              body: 'Get a matched resume and cover letter, then export ATS-safe PDF when ready.',
-            },
-          ].map((step) => (
-            <div
-              key={step.n}
-              className="rounded-lg border border-line bg-panel p-5 sm:p-6 space-y-3"
-            >
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-accent text-white text-sm font-bold">
-                {step.n}
-              </span>
-              <h3 className="font-display text-lg font-semibold text-navy">{step.title}</h3>
-              <p className="text-sm text-ink-muted leading-relaxed">{step.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="space-y-8">
-        <div className="max-w-xl">
-          <p className="rf-eyebrow">Features</p>
-          <h2 className="font-display text-2xl sm:text-3xl font-semibold text-navy mt-1">
-            Built for serious applications
-          </h2>
-        </div>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[
-            {
-              icon: IconSparkles,
-              title: 'AI tailoring',
-              body: 'Rewrites bullets around the job without inventing employers or metrics.',
-            },
-            {
-              icon: IconTrendingUp,
-              title: 'Requirement match',
-              body: 'See how your profile lines up with the posting before you send.',
-            },
-            {
-              icon: IconFileText,
-              title: 'ATS layouts',
-              body: 'Single-column templates recruiters and parsers can actually read.',
-            },
-            {
-              icon: IconZap,
-              title: 'Cover letters',
-              body: 'Matching letters with length controls and optional humanize polish.',
-            },
-            {
-              icon: IconCheck,
-              title: 'Special notes',
-              body: 'Per-application instructions — emphasize one project for this job only.',
-            },
-            {
-              icon: IconShield,
-              title: 'Upwork-safe mode',
-              body: 'Hide contact channels when marketplaces ban off-platform sharing.',
-            },
-          ].map(({ icon: Icon, title, body }) => (
-            <div
-              key={title}
-              className="rounded-lg border border-line bg-panel p-5 space-y-3 hover:border-line-strong transition-colors"
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent-soft text-accent">
-                <Icon className="w-5 h-5" />
+        {/* Features as paired photo + list — no icon card grid */}
+        <section className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+          <div className="space-y-4">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-navy sm:text-3xl">
+              Everything that stays true under pressure
+            </h2>
+            <p className="text-ink-muted">
+              Tools for the last ten minutes before you hit Submit — not another fluff writer.
+            </p>
+            <dl className="space-y-5 pt-2">
+              {[
+                {
+                  title: 'AI that respects your résumé',
+                  body: 'Tailors wording and order for the posting without fabricating experience.',
+                },
+                {
+                  title: 'Requirement match view',
+                  body: 'See where your profile already covers the job — and what Special notes should emphasize.',
+                },
+                {
+                  title: 'ATS-safe templates',
+                  body: 'Single-column layouts parsers and humans can both scan cleanly.',
+                },
+                {
+                  title: 'Special notes + Upwork-safe contact',
+                  body: 'Emphasize one project for this job only; strip email, phone, and links when marketplaces demand it.',
+                },
+              ].map((item) => (
+                <div key={item.title} className="space-y-1 pt-4 first:pt-0 border-t border-line first:border-t-0">
+                  <dt className="font-bold text-navy">{item.title}</dt>
+                  <dd className="mt-1 text-sm leading-relaxed text-ink-muted">{item.body}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+          <div className="relative overflow-hidden lg:sticky lg:top-24">
+            <img
+              src="/images/apply-together.jpg"
+              alt="Collaborators reviewing application materials at a desk"
+              className="h-64 w-full object-cover sm:h-80 lg:h-[28rem]"
+              loading="lazy"
+            />
+            <div className="absolute bottom-4 right-4 w-24 sm:w-28">
+              <div className="rf-radar !aspect-square w-full opacity-95">
+                <div className="rf-radar-sweep" aria-hidden />
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                  <p className="text-[9px] font-bold tracking-wide text-[#9fd49a]">FIT</p>
+                  <p className="font-display text-xl font-bold text-white">—</p>
+                </div>
               </div>
-              <h3 className="font-semibold text-navy">{title}</h3>
-              <p className="text-sm text-ink-muted leading-relaxed">{body}</p>
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
+        </section>
 
-      <section className="space-y-6">
-        <FAQSection limit={4} />
-        <div className="text-center">
-          <NavLink to="/faq">
-            <Button variant="ghost" className="!text-sm">
-              <IconHelp className="w-4 h-4 text-accent" />
-              View all FAQs
-            </Button>
-          </NavLink>
-        </div>
-      </section>
+        <section className="relative overflow-hidden">
+          <img
+            src="/images/hero-desk.jpg"
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-navy-deep/82" />
+          <div className="relative max-w-2xl space-y-3 px-1 py-10 sm:py-12">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-white sm:text-3xl">
+              Same career. Different signal every time.
+            </h2>
+            <p className="leading-relaxed text-white/85">
+              Use Chat to answer client screens from your profile, Generate for the documents,
+              History when you need last week’s version. One workspace for both marketplace
+              proposals and company applications.
+            </p>
+          </div>
+        </section>
 
-      <section>
-        <Card className="!p-8 sm:!p-10 text-center space-y-4 border-line bg-panel">
-          <h2 className="font-display text-2xl sm:text-3xl font-semibold text-navy">
-            Ready for your next application?
+        <section className="space-y-6">
+          <div className="max-w-2xl space-y-2">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-navy sm:text-3xl">
+              Questions people ask before trusting AI with a résumé
+            </h2>
+          </div>
+          <FAQSection limit={4} showHeader={false} />
+          <div className="text-center">
+            <NavLink to="/faq">
+              <Button variant="ghost" className="!text-sm">
+                <IconHelp className="h-4 w-4 text-accent" />
+                Browse all answers
+              </Button>
+            </NavLink>
+          </div>
+        </section>
+
+        <section className="border-y border-line py-10 text-center sm:py-12">
+          <h2 className="font-display text-2xl font-bold tracking-tight text-navy sm:text-3xl">
+            Ready to dial in the next application?
           </h2>
-          <p className="text-ink-muted max-w-lg mx-auto">
-            Create a free account, save your profile, and generate a tailored package for any role.
+          <p className="mx-auto mt-3 max-w-lg text-ink-muted">
+            Free to start. Save your profile, paste a job, and ship a tailored package today.
           </p>
-          <div className="pt-1">
+          <div className="mt-5">
             {isAuthenticated ? (
-              <NavLink to="/generate">
-                <Button variant="accent" className="!px-7 !min-h-11">
-                  Open generator
-                </Button>
+              <NavLink
+                to="/generate"
+                className="rf-btn rf-btn-accent inline-flex !min-h-12 !px-7"
+              >
+                Open Generate
               </NavLink>
             ) : (
-              <NavLink to="/signup">
-                <Button variant="accent" className="!px-7 !min-h-11">
-                  Create free account
-                </Button>
+              <NavLink
+                to="/signup"
+                className="rf-btn rf-btn-accent inline-flex !min-h-12 !px-7"
+              >
+                Create free account
               </NavLink>
             )}
           </div>
-        </Card>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }

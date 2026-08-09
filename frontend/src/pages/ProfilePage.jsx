@@ -359,7 +359,7 @@ export default function ProfilePage() {
     <div className="space-y-5 rf-enter">
       <PageHeader
         title="Your profile"
-        subtitle="Edit one section at a time. Generations use this data as ground truth."
+        subtitle="One source of truth for Generate and Chat. Edit one section at a time — nothing invented from outside this page."
       />
 
       {displayError && <Alert tone="error">{displayError}</Alert>}

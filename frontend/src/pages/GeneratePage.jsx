@@ -158,10 +158,10 @@ function HumanizeCard({ stats }) {
   return (
     <div className="rounded-xl border border-accent/30 bg-accent-soft px-4 py-3.5 text-sm space-y-2">
       <p className="font-bold text-navy">
-        ✨ Humanized via NLP pipeline
+        Humanized for more natural rhythm
         {stats.improved ? (
           <span className="ml-2 text-xs font-semibold text-success">
-            · AI score reduced
+            · AI-likeness score reduced
           </span>
         ) : null}
       </p>
@@ -428,7 +428,7 @@ export default function GeneratePage() {
     <div className="space-y-5 sm:space-y-6 rf-stagger">
       <PageHeader
         title="Generate"
-        subtitle="Pick your outputs, select an ATS-safe template, paste the job posting — then generate."
+        subtitle="Paste the job posting, set Special notes and contact mode, pick an ATS template — then forge resume and cover letter from your profile."
       />
 
       {health && !health.gemini_ready && (
@@ -756,7 +756,7 @@ export default function GeneratePage() {
                     loading={humanizing}
                     disabled={humanizing || !generationId}
                   >
-                    ✨ {humanizing ? 'Humanizing…' : 'Humanize'}
+                    {humanizing ? 'Humanizing…' : 'Humanize'}
                   </Button>
                   <Button
                     type="button"

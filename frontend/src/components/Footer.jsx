@@ -13,13 +13,14 @@ export default function Footer() {
           <div className="md:col-span-2 space-y-3">
             <BrandMark showTagline />
             <p className="text-sm text-ink-muted max-w-sm leading-relaxed">
-              Tailor ATS-ready resumes and cover letters from your real experience —
-              built for company apps and marketplace proposals.
+              ResumeForge forges job-ready resumes and cover letters from your real
+              profile — with Special notes, Upwork-safe contact, and chat that answers
+              from your experience.
             </p>
           </div>
 
           <div className="space-y-3">
-            <p className="text-sm font-semibold text-navy">Product</p>
+            <p className="text-sm font-bold text-navy">Product</p>
             <ul className="space-y-2">
               <li>
                 <NavLink to="/profile" className="hover:text-navy transition-colors">
@@ -45,7 +46,7 @@ export default function Footer() {
           </div>
 
           <div className="space-y-3">
-            <p className="text-sm font-semibold text-navy">Support</p>
+            <p className="text-sm font-bold text-navy">Help</p>
             <ul className="space-y-2">
               <li>
                 <NavLink to="/faq" className="hover:text-navy transition-colors">
@@ -67,7 +68,7 @@ export default function Footer() {
 
         <div className="pt-6 border-t border-line flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-ink-faint">
           <p>© {new Date().getFullYear()} ResumeForge</p>
-          <p>ATS-optimized · Private by default</p>
+          <p>Real profile · Per-job fit · ATS-safe PDFs</p>
         </div>
       </div>
     </footer>

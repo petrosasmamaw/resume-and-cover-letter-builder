@@ -166,7 +166,7 @@ export default function ChatPage() {
     <div className="space-y-6 animate-fade-up">
       <PageHeader
         title="Career chat"
-        subtitle="Answers Upwork/client questions from your full Profile, drafts Special notes, and guides Generate — same data the resume AI uses."
+        subtitle="Ask from your full Profile — client Q&A, Special notes drafts, and fit coaching. Same ground truth Generate uses."
         action={
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="ghost" onClick={clearChat}>
