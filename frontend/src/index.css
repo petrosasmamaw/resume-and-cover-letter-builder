@@ -973,3 +973,27 @@ textarea.rf-input {
   overflow: auto;
   overscroll-behavior: contain;
 }
+
+/* Letter-size resume stage — reads like a real PDF page */
+.rf-gen-pdf-stage {
+  width: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  max-height: min(85vh, 980px);
+  padding: 0.75rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-line);
+  background: var(--color-surface-alt);
+}
+.rf-gen-pdf-page {
+  width: min(100%, 8.5in);
+  margin: 0 auto;
+  background: var(--color-panel);
+  box-shadow: var(--shadow-lift);
+  border: 1px solid var(--color-line);
+}
+.rf-gen-pdf-page > * {
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}

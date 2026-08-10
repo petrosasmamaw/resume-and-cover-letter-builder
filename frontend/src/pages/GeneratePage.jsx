@@ -451,7 +451,6 @@ export default function GeneratePage() {
     : coverLetterLength;
   const charCount = coverLetter.length;
   const hasResults = !loading && (resume || coverLetter);
-  const bothDocs = Boolean(resume && coverLetter);
 
   const lengthOptions = LENGTH_PRESETS.map((p) => ({
     id: String(p.value),
@@ -641,70 +640,67 @@ export default function GeneratePage() {
           {loading && <GenerateSkeleton />}
 
           {hasResults && (
-            <div ref={resultsRef} className="space-y-4 rf-enter">
+            <div ref={resultsRef} className="space-y-5 rf-enter">
               {resume?.requirement_match ? (
                 <RequirementMatch items={resume.requirement_match} />
               ) : null}
 
-              <div
-                className={`grid gap-4 ${
-                  bothDocs ? 'xl:grid-cols-2' : 'grid-cols-1'
-                }`}
-              >
-                {resume && (
-                  <section className="rf-gen-panel space-y-3 min-w-0">
-                    <div className="flex items-start justify-between gap-3 flex-wrap">
-                      <div>
-                        <h2 className="text-base font-bold text-navy">Resume preview</h2>
-                        <p className="text-xs text-ink-muted mt-0.5">
-                          Template:{' '}
-                          <span className="font-medium">
-                            {TEMPLATES.find((t) => t.id === resumeTemplate)?.label ||
-                              resumeTemplate}
-                          </span>
-                          {' · '}
-                          {includeContact ? 'With contact' : 'Upwork-safe'}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {TEMPLATES.map((t) => (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => setField('resumeTemplate', t.id)}
-                            className={`rf-btn !min-h-9 !px-3 !text-xs !rounded-lg ${
-                              resumeTemplate === t.id ? 'rf-btn-primary' : 'rf-btn-ghost'
-                            }`}
-                          >
-                            {t.id === 'color' ? 'Modern' : 'Premium'}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => setField('includeContact', !includeContact)}
-                          className={`rf-btn !min-h-9 !px-3 !text-xs !rounded-lg ${
-                            includeContact ? 'rf-btn-secondary' : 'rf-btn-primary'
-                          }`}
-                          title="Toggle contact details for Upwork vs normal applications"
-                        >
-                          {includeContact ? 'With contact' : 'Upwork-safe'}
-                        </button>
-                        <Button
-                          type="button"
-                          variant="accent"
-                          className="!min-h-9 !text-xs !rounded-lg gap-1.5"
-                          onClick={handlePdf}
-                          loading={pdfLoading}
-                          disabled={pdfLoading || !generationId}
-                        >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                          {pdfLoading ? 'Building…' : 'Download PDF'}
-                        </Button>
-                      </div>
+              {resume ? (
+                <section className="rf-gen-panel space-y-3 min-w-0">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                      <h2 className="text-base font-bold text-navy">Resume</h2>
+                      <p className="text-xs text-ink-muted mt-0.5">
+                        Full-page preview ·{' '}
+                        <span className="font-medium">
+                          {TEMPLATES.find((t) => t.id === resumeTemplate)?.label ||
+                            resumeTemplate}
+                        </span>
+                        {' · '}
+                        {includeContact ? 'With contact' : 'Upwork-safe'}
+                      </p>
                     </div>
-                    <div className="rf-gen-doc-scroll">
+                    <div className="flex flex-wrap gap-2">
+                      {TEMPLATES.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setField('resumeTemplate', t.id)}
+                          className={`rf-btn !min-h-9 !px-3 !text-xs !rounded-lg ${
+                            resumeTemplate === t.id ? 'rf-btn-primary' : 'rf-btn-ghost'
+                          }`}
+                        >
+                          {t.id === 'color' ? 'Modern' : 'Premium'}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setField('includeContact', !includeContact)}
+                        className={`rf-btn !min-h-9 !px-3 !text-xs !rounded-lg ${
+                          includeContact ? 'rf-btn-secondary' : 'rf-btn-primary'
+                        }`}
+                        title="Toggle contact details for Upwork vs normal applications"
+                      >
+                        {includeContact ? 'With contact' : 'Upwork-safe'}
+                      </button>
+                      <Button
+                        type="button"
+                        variant="accent"
+                        className="!min-h-9 !text-xs !rounded-lg gap-1.5"
+                        onClick={handlePdf}
+                        loading={pdfLoading}
+                        disabled={pdfLoading || !generationId}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+                          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        {pdfLoading ? 'Building…' : 'Download PDF'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="rf-gen-pdf-stage">
+                    <div className="rf-gen-pdf-page">
                       <ResumePreview
                         resume={resume}
                         profile={profile}
@@ -712,87 +708,85 @@ export default function GeneratePage() {
                         includeContact={includeContact}
                       />
                     </div>
-                  </section>
-                )}
+                  </div>
+                </section>
+              ) : null}
 
-                {coverLetter && (
-                  <section className="rf-gen-panel space-y-3 min-w-0">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <h2 className="text-base font-bold text-navy">Cover letter</h2>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="!min-h-9 !text-xs !rounded-lg gap-1.5"
-                          onClick={handleDetect}
-                          loading={detecting}
-                          disabled={detecting || !generationId}
-                        >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-                            <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" />
-                            <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                          </svg>
-                          {detecting ? 'Analyzing…' : 'Check AI'}
-                        </Button>
-                        <Button
-                          type="button"
-                          className="!min-h-9 !text-xs !rounded-lg gap-1.5"
-                          onClick={handleHumanize}
-                          loading={humanizing}
-                          disabled={humanizing || !generationId}
-                        >
-                          {humanizing ? 'Humanizing…' : 'Humanize'}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="!min-h-9 !text-xs !rounded-lg gap-1.5"
-                          onClick={copyCoverLetter}
-                        >
-                          {copied ? (
-                            <>
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-                                <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                              Copied!
-                            </>
-                          ) : (
-                            <>
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-                                <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2" />
-                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2" />
-                              </svg>
-                              Copy
-                            </>
-                          )}
-                        </Button>
-                      </div>
+              {coverLetter ? (
+                <section className="rf-gen-panel space-y-3 min-w-0">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <h2 className="text-base font-bold text-navy">Cover letter</h2>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="!min-h-9 !text-xs !rounded-lg gap-1.5"
+                        onClick={handleDetect}
+                        loading={detecting}
+                        disabled={detecting || !generationId}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+                          <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" />
+                          <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                        {detecting ? 'Analyzing…' : 'Check AI'}
+                      </Button>
+                      <Button
+                        type="button"
+                        className="!min-h-9 !text-xs !rounded-lg gap-1.5"
+                        onClick={handleHumanize}
+                        loading={humanizing}
+                        disabled={humanizing || !generationId}
+                      >
+                        {humanizing ? 'Humanizing…' : 'Humanize'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="!min-h-9 !text-xs !rounded-lg gap-1.5"
+                        onClick={copyCoverLetter}
+                      >
+                        {copied ? (
+                          <>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+                              <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+                              <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2" />
+                              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2" />
+                            </svg>
+                            Copy
+                          </>
+                        )}
+                      </Button>
                     </div>
+                  </div>
 
-                    {wantsCover && targetLength ? (
-                      <CharBar count={charCount} target={targetLength} />
-                    ) : (
-                      <p className="text-xs text-ink-muted">
-                        {charCount.toLocaleString()} characters
-                      </p>
-                    )}
-
-                    {detectionStats && <DetectionCard stats={detectionStats} />}
-                    {humanizeStats && <HumanizeCard stats={humanizeStats} />}
-
-                    <div className="rf-gen-doc-scroll">
-                      <textarea
-                        readOnly
-                        value={coverLetter}
-                        className="rf-input min-h-full w-full leading-relaxed font-sans !min-h-[220px]"
-                      />
-                    </div>
+                  {wantsCover && targetLength ? (
+                    <CharBar count={charCount} target={targetLength} />
+                  ) : (
                     <p className="text-xs text-ink-muted">
-                      Humanize only rewrites the cover letter — your resume PDF is unaffected.
+                      {charCount.toLocaleString()} characters
                     </p>
-                  </section>
-                )}
-              </div>
+                  )}
+
+                  {detectionStats && <DetectionCard stats={detectionStats} />}
+                  {humanizeStats && <HumanizeCard stats={humanizeStats} />}
+
+                  <textarea
+                    readOnly
+                    value={coverLetter}
+                    className="rf-input min-h-[16rem] w-full resize-y leading-relaxed font-sans"
+                  />
+                  <p className="text-xs text-ink-muted">
+                    Humanize only rewrites the cover letter — your resume PDF is unaffected.
+                  </p>
+                </section>
+              ) : null}
             </div>
           )}
         </div>
