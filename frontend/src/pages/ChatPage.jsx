@@ -3,14 +3,7 @@ import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { api, getStoredProfileId } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
-import {
-  Alert,
-  Button,
-  Card,
-  Field,
-  PageHeader,
-  Spinner,
-} from '../components/ui.jsx';
+import { Alert, Button, Field, PageHeader } from '../components/ui.jsx';
 import {
   appendChatMessage,
   CHAT_WELCOME,
@@ -32,20 +25,33 @@ function MessageBubble({ role, content }) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={[
-          'max-w-[90%] sm:max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap',
-          isUser
-            ? 'bg-accent text-white rounded-br-md'
-            : 'bg-panel border border-line text-ink rounded-bl-md',
-        ].join(' ')}
+        className={`rf-chat-bubble ${
+          isUser ? 'rf-chat-bubble-user' : 'rf-chat-bubble-assistant'
+        }`}
       >
-        {!isUser && (
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-accent">
-            Assistant
-          </p>
-        )}
+        {!isUser ? (
+          <div className="rf-chat-bubble-meta">
+            <span className="rf-chat-avatar" aria-hidden>
+              RF
+            </span>
+            Career coach
+          </div>
+        ) : null}
         {content}
       </div>
+    </div>
+  );
+}
+
+function TypingIndicator() {
+  return (
+    <div className="rf-chat-typing" aria-live="polite">
+      <span className="rf-chat-typing-dots" aria-hidden>
+        <span />
+        <span />
+        <span />
+      </span>
+      Reading your profile…
     </div>
   );
 }
@@ -68,6 +74,7 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const bottomRef = useRef(null);
+  const textareaRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -154,6 +161,7 @@ export default function ChatPage() {
       );
     } finally {
       setSending(false);
+      textareaRef.current?.focus();
     }
   }
 
@@ -162,71 +170,92 @@ export default function ChatPage() {
     setError('');
   }
 
+  const profileLinked = Boolean(profileMeta || profileId);
+
   return (
-    <div className="space-y-6 animate-fade-up">
+    <div className="rf-chat-shell rf-enter">
       <PageHeader
         title="Career chat"
-        subtitle="Ask from your full Profile — client Q&A, Special notes drafts, and fit coaching. Same ground truth Generate uses."
+        subtitle="Client Q&A, Special notes, and fit coaching from your saved Profile — the same ground truth Generate uses."
         action={
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="ghost" onClick={clearChat}>
               New chat
             </Button>
-            <Link to="/generate" className="rf-btn rf-btn-primary !min-h-10 !text-sm">
+            <Link
+              to="/generate"
+              className="rf-btn rf-btn-accent !min-h-10 !text-sm"
+            >
               Go to Generate
             </Link>
           </div>
         }
       />
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <Card className="flex flex-col min-h-[min(70vh,640px)] !p-0 overflow-hidden">
-          <div
-            className="flex-1 space-y-3 overflow-y-auto px-4 py-5 sm:px-5"
-            style={{ maxHeight: 'min(58vh, 520px)' }}
-          >
+      <div className="rf-chat-stage">
+        <section className="rf-chat-thread" aria-label="Career chat conversation">
+          <div className="rf-chat-thread-bar">
+            <div className="min-w-0">
+              <p className="font-display text-sm font-bold text-navy truncate">
+                Profile-grounded coach
+              </p>
+              <p className="text-xs text-ink-muted truncate">
+                Answers stay tied to your experience
+              </p>
+            </div>
+            <span className="rf-chat-status shrink-0">
+              <span className="rf-chat-status-dot" aria-hidden />
+              {profileLinked ? 'Profile linked' : 'No profile'}
+            </span>
+          </div>
+
+          <div className="rf-chat-messages">
             {messages.map((m, i) => (
-              <MessageBubble key={`${m.role}-${i}`} role={m.role} content={m.content} />
+              <MessageBubble
+                key={`${m.role}-${i}`}
+                role={m.role}
+                content={m.content}
+              />
             ))}
-            {sending && (
-              <div className="flex items-center gap-2 text-sm text-ink-muted pl-1">
-                <Spinner className="w-4 h-4" />
-                Reading your profile…
-              </div>
-            )}
+            {sending ? <TypingIndicator /> : null}
             <div ref={bottomRef} />
           </div>
 
-          {messages.length <= 1 && (
-            <div className="flex flex-wrap gap-2 px-4 pb-3 sm:px-5">
+          {messages.length <= 1 ? (
+            <div className="rf-chat-suggestions">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   type="button"
+                  className="rf-chat-chip"
                   disabled={sending}
                   onClick={() => sendMessage(s)}
-                  className="rounded-xl border border-line bg-panel px-3 py-2 text-left text-xs font-medium text-ink-muted hover:border-line-accent hover:text-navy hover:bg-accent-soft transition-colors"
                 >
                   {s}
                 </button>
               ))}
             </div>
-          )}
+          ) : null}
 
-          {error && (
-            <div className="px-4 pb-2 sm:px-5">
+          {error ? (
+            <div className="px-3 sm:px-5 pb-2">
               <Alert tone="error">{error}</Alert>
             </div>
-          )}
+          ) : null}
 
           <form
-            className="border-t border-line bg-panel/60 p-3 sm:p-4 space-y-2"
+            className="rf-chat-composer space-y-2.5"
             onSubmit={(e) => {
               e.preventDefault();
               sendMessage(input);
             }}
           >
+            <label htmlFor="career-chat-input" className="sr-only">
+              Message
+            </label>
             <textarea
+              id="career-chat-input"
+              ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -237,82 +266,85 @@ export default function ChatPage() {
               }}
               rows={3}
               maxLength={12000}
-              placeholder="Paste an Upwork question, or ask me to answer from my profile…"
-              className="rf-input w-full resize-y min-h-[4.5rem]"
+              placeholder="Paste an Upwork client question, or ask for Special notes from your profile…"
               disabled={sending}
             />
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[11px] text-ink-muted">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[11px] leading-snug text-ink-muted">
                 Enter to send · Shift+Enter for newline
-                {profileMeta || profileId
-                  ? ' · Profile linked'
-                  : ' · No profile yet'}
-                {' · Saved in session'}
+                {profileLinked ? ' · Profile ready' : ' · Save a Profile for stronger answers'}
+                {' · Session saved'}
               </p>
-              <Button type="submit" disabled={sending || !input.trim()}>
+              <Button
+                type="submit"
+                variant="accent"
+                className="!min-h-11 w-full sm:w-auto sm:!px-6"
+                disabled={sending || !input.trim()}
+                loading={sending}
+              >
                 {sending ? 'Sending…' : 'Send'}
               </Button>
             </div>
           </form>
-        </Card>
+        </section>
 
-        <div className="space-y-4">
-          <Card>
-            <p className="text-sm font-semibold text-navy">Your profile in chat</p>
+        <aside className="rf-chat-side" aria-label="Chat context">
+          <div className="rf-chat-panel space-y-3">
+            <div>
+              <h2>Your profile in chat</h2>
+              <p className="rf-chat-panel-sub">
+                Source of truth for every reply
+              </p>
+            </div>
             {profileMeta ? (
-              <div className="mt-2 space-y-1.5 text-sm text-ink-muted">
-                <p className="font-medium text-ink">
+              <div className="space-y-2">
+                <p className="text-sm font-bold text-ink leading-snug">
                   {profileMeta.name || 'Unnamed profile'}
-                  {profileMeta.title ? (
-                    <span className="font-normal text-ink-muted">
-                      {' '}
-                      · {profileMeta.title}
-                    </span>
-                  ) : null}
                 </p>
-                <p className="text-xs">
+                {profileMeta.title ? (
+                  <p className="text-sm text-ink-muted">{profileMeta.title}</p>
+                ) : null}
+                <p className="text-xs font-semibold text-navy">
                   {profileMeta.skills} skills · {profileMeta.experience} roles ·{' '}
                   {profileMeta.projects} projects
                 </p>
-                <p className="text-xs text-accent-dim pt-1">
-                  Chat answers client questions using this data (same as Generate).
-                </p>
                 <Link
                   to="/profile"
-                  className="inline-block text-xs font-semibold text-navy underline mt-1"
+                  className="inline-flex text-sm font-bold text-accent-dim underline-offset-2 hover:underline"
                 >
                   Edit profile
                 </Link>
               </div>
             ) : (
-              <div className="mt-2 space-y-2">
-                <p className="text-sm text-ink-muted">
-                  No profile linked yet. Save one so Upwork-style answers can use your
+              <div className="space-y-3">
+                <p className="text-sm text-ink-muted leading-relaxed">
+                  Save a Profile so Upwork-style answers and Special notes can use your
                   real experience.
                 </p>
                 <Link
                   to="/profile"
-                  className="rf-btn rf-btn-secondary !min-h-9 !text-sm"
+                  className="rf-btn rf-btn-secondary !min-h-10 !text-sm w-full"
                 >
                   Open Profile
                 </Link>
               </div>
             )}
-          </Card>
+          </div>
 
-          <Card>
+          <div className="rf-chat-panel">
             <button
               type="button"
-              className="w-full flex items-center justify-between gap-2 text-left"
+              className="flex w-full items-start justify-between gap-3 text-left"
               onClick={() => dispatch(setChatShowJob(!showJob))}
+              aria-expanded={showJob}
             >
               <div>
-                <p className="text-sm font-bold text-navy">Job context</p>
-                <p className="text-xs text-ink-muted mt-0.5">
-                  Optional — answers articulate your fit for this role
+                <h2>Job context</h2>
+                <p className="rf-chat-panel-sub">
+                  Optional — improves fit and Special notes
                 </p>
               </div>
-              <span className="text-xs font-semibold text-accent">
+              <span className="shrink-0 text-xs font-bold text-accent pt-0.5">
                 {showJob ? 'Hide' : 'Show'}
               </span>
             </button>
@@ -360,8 +392,8 @@ export default function ChatPage() {
                 />
               </div>
             )}
-          </Card>
-        </div>
+          </div>
+        </aside>
       </div>
     </div>
   );
