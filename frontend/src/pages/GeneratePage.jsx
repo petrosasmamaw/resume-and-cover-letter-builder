@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -11,8 +11,6 @@ import { RequirementMatch } from '../components/RequirementMatch.jsx';
 import {
   Alert,
   Button,
-  Card,
-  ChoiceCards,
   EmptyState,
   Field,
   GenerateSkeleton,
@@ -89,6 +87,35 @@ function downloadBlob(blob, filename) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/* ── Compact vertical option list (sidebar filters) ─────── */
+function CompactChoice({ options, value, onChange, 'aria-label': ariaLabel }) {
+  return (
+    <div className="rf-gen-options" role="listbox" aria-label={ariaLabel}>
+      {options.map((opt) => {
+        const active = value === opt.id;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            role="option"
+            aria-selected={active}
+            onClick={() => onChange(opt.id)}
+            className={`rf-gen-option${active ? ' rf-gen-option-active' : ''}`}
+          >
+            <span className="rf-gen-option-label">{opt.label}</span>
+            {opt.hint ? (
+              <span className="rf-gen-option-hint">{opt.hint}</span>
+            ) : null}
+            {opt.badge ? (
+              <span className="rf-gen-option-badge">{opt.badge}</span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 /* ── Character counter bar ─────────────────────────────── */
@@ -221,6 +248,8 @@ export default function GeneratePage() {
   const [health, setHealth] = useState(null);
   const [humanizing, setHumanizing] = useState(false);
   const [detecting, setDetecting] = useState(false);
+  const resultsRef = useRef(null);
+  const scrollResultsPending = useRef(false);
 
   const setField = (key, value) => dispatch(setGenerateField({ key, value }));
 
@@ -263,12 +292,23 @@ export default function GeneratePage() {
             detectionStats: null,
           })
         );
+        scrollResultsPending.current = true;
       } catch (err) {
         setError(err.message);
       }
     }
     loadGeneration();
   }, [searchParams, dispatch]);
+
+  useEffect(() => {
+    if (!scrollResultsPending.current) return;
+    if (!resume && !coverLetter) return;
+    scrollResultsPending.current = false;
+    const id = window.requestAnimationFrame(() => {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [resume, coverLetter]);
 
   async function handleGenerate(e) {
     e.preventDefault();
@@ -330,6 +370,8 @@ export default function GeneratePage() {
           created_at: new Date().toISOString(),
         })
       );
+
+      scrollResultsPending.current = true;
     } catch (err) {
       setError(err.message);
       dispatch(clearGenerateResults());
@@ -409,6 +451,13 @@ export default function GeneratePage() {
     : coverLetterLength;
   const charCount = coverLetter.length;
   const hasResults = !loading && (resume || coverLetter);
+  const bothDocs = Boolean(resume && coverLetter);
+
+  const lengthOptions = LENGTH_PRESETS.map((p) => ({
+    id: String(p.value),
+    label: p.label,
+    hint: `About ${p.value} characters`,
+  }));
 
   if (!profileId) {
     return (
@@ -416,7 +465,7 @@ export default function GeneratePage() {
         title="Create a profile first"
         description="Generate needs your real experience and skills before it can craft a tailored application."
         action={
-          <Link to="/" className="rf-btn rf-btn-primary">
+          <Link to="/profile" className="rf-btn rf-btn-primary">
             Go to Profile
           </Link>
         }
@@ -443,183 +492,72 @@ export default function GeneratePage() {
 
       {error && <Alert tone="error">{error}</Alert>}
 
-      {/* ── Form Card ───────────────────────────────────────── */}
-      <Card>
-        <form onSubmit={handleGenerate} className="space-y-6">
-
-          {/* Output mode */}
-          <div>
-            <p className="text-sm font-bold text-ink mb-3">What to generate</p>
-            <ChoiceCards
-              options={OUTPUT_MODES}
-              value={outputMode}
-              onChange={(id) => setField('outputMode', id)}
-            />
-          </div>
-
-          {/* Resume template */}
-          {wantsResume && (
-            <div>
-              <p className="text-sm font-bold text-ink mb-3">Resume template</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {TEMPLATES.map((opt) => {
-                  const active = resumeTemplate === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setField('resumeTemplate', opt.id)}
-                      className={`rf-choice ${active ? 'rf-choice-active' : ''} text-left`}
-                      aria-pressed={active}
-                    >
-                      <div className="flex items-start gap-3">
-                        {/* Template thumbnail */}
-                        <div
-                          className={`mt-0.5 h-12 w-10 shrink-0 rounded-lg border overflow-hidden shadow-xs ${
-                            opt.id === 'color'
-                              ? 'border-accent/40'
-                              : 'border-line-strong'
-                          }`}
-                        >
-                          {opt.id === 'color' ? (
-                            <div className="h-full w-full bg-gradient-to-b from-accent/50 via-navy/60 to-navy" />
-                          ) : (
-                            <div className="h-full flex flex-col items-start justify-start pt-1.5 gap-0.5 px-1.5 bg-white">
-                              <div className="h-1 w-6 bg-navy rounded-full" />
-                              <div className="h-px w-full bg-navy/30 mt-1" />
-                              <div className="h-px w-full bg-line" />
-                              <div className="h-px w-5 bg-line" />
-                              <div className="h-px w-full bg-line mt-0.5" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-ink leading-tight">
-                            {opt.label}
-                          </p>
-                          <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">
-                            {opt.hint}
-                          </p>
-                          <span className="mt-1.5 inline-flex rf-badge rf-badge-accent">
-                            {opt.badge}
-                          </span>
-                        </div>
-                        {active && (
-                          <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-navy">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
-                              <path d="M5 12l5 5L20 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Contact details — With contact vs Upwork-safe */}
-          {wantsResume && (
-            <div>
-              <p className="text-sm font-bold text-ink mb-1">Contact on resume</p>
-              <p className="text-xs text-ink-muted mb-3 leading-relaxed">
-                Upwork and similar platforms can ban proposals that share email,
-                phone, LinkedIn, or other ways to contact you outside the site.
-                Use <span className="font-semibold text-navy">Upwork-safe</span>{' '}
-                when applying there — your skills, experience, and projects stay;
-                contact details do not.
-              </p>
-              <ChoiceCards
-                options={CONTACT_MODES}
-                value={includeContact ? 'with' : 'without'}
-                onChange={(id) => setField('includeContact', id === 'with')}
+      <div className="rf-gen-layout">
+        <aside className="rf-gen-aside" aria-label="Generate options">
+          <div className="rf-gen-panel">
+            <div className="rf-gen-section">
+              <p className="rf-gen-section-title">What to generate</p>
+              <CompactChoice
+                aria-label="What to generate"
+                options={OUTPUT_MODES}
+                value={outputMode}
+                onChange={(id) => setField('outputMode', id)}
               />
-              <p
-                className={`mt-2 text-xs leading-relaxed ${
-                  includeContact ? 'text-ink-muted' : 'text-navy font-medium'
-                }`}
-              >
-                {includeContact
-                  ? 'Header includes email, phone, address, LinkedIn, GitHub, and portfolio.'
-                  : 'Upwork-safe: no email, phone, address, or profile links — only name, title, and work content.'}
-              </p>
             </div>
-          )}
 
-          {/* Job fields */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Job title"
-              value={jobTitle}
-              onChange={(e) => setField('jobTitle', e.target.value)}
-              required
-              placeholder="Senior Software Engineer"
-            />
-            <Field
-              label="Company name"
-              value={companyName}
-              onChange={(e) => setField('companyName', e.target.value)}
-              required
-              placeholder="Acme Corporation"
-            />
-          </div>
+            {wantsResume && (
+              <div className="rf-gen-section">
+                <p className="rf-gen-section-title">Resume template</p>
+                <CompactChoice
+                  aria-label="Resume template"
+                  options={TEMPLATES}
+                  value={resumeTemplate}
+                  onChange={(id) => setField('resumeTemplate', id)}
+                />
+              </div>
+            )}
 
-          <Field
-            label="Job description"
-            as="textarea"
-            className="min-h-[200px]"
-            value={jobDescription}
-            onChange={(e) => setField('jobDescription', e.target.value)}
-            required
-            placeholder="Paste the full job description here — the more detail, the better the tailoring…"
-          />
+            {wantsResume && (
+              <div className="rf-gen-section">
+                <p className="rf-gen-section-title">Contact on resume</p>
+                <p className="rf-gen-contact-note">
+                  Upwork and similar platforms can ban proposals that share email,
+                  phone, LinkedIn, or other ways to contact you outside the site.
+                  Use <span className="font-semibold text-navy">Upwork-safe</span>{' '}
+                  when applying there — your skills, experience, and projects stay;
+                  contact details do not.
+                </p>
+                <CompactChoice
+                  aria-label="Contact on resume"
+                  options={CONTACT_MODES}
+                  value={includeContact ? 'with' : 'without'}
+                  onChange={(id) => setField('includeContact', id === 'with')}
+                />
+                <p
+                  className={`rf-gen-contact-note ${
+                    includeContact ? '' : 'text-navy font-medium'
+                  }`}
+                >
+                  {includeContact
+                    ? 'Header includes email, phone, address, LinkedIn, GitHub, and portfolio.'
+                    : 'Upwork-safe: no email, phone, address, or profile links — only name, title, and work content.'}
+                </p>
+              </div>
+            )}
 
-          <div>
-            <Field
-              label="Special notes (optional — this application only)"
-              as="textarea"
-              className="min-h-[110px]"
-              value={specialNotes}
-              onChange={(e) => setField('specialNotes', e.target.value.slice(0, 4000))}
-              maxLength={4000}
-              placeholder={
-                'Tell Gemini what to add, emphasize, or leave out for THIS job only.\nExamples:\n• Emphasize React and Node; de-emphasize WordPress\n• Highlight the Tamagn Check project; skip older internships\n• Mention I led the payments migration for 6 months\n• Keep the cover letter shorter and more technical'
-              }
-            />
-            <p className="mt-1.5 text-xs text-ink-muted leading-relaxed">
-              Applied only to this generation — does not change your saved profile.
-              Use it to tailor skills, experience, or tone for one application.
-              {specialNotes.trim()
-                ? ` · ${specialNotes.trim().length}/4000`
-                : ''}
-            </p>
-          </div>
-
-          {/* Cover letter length */}
-          {wantsCover && (
-            <div>
-              <p className="text-sm font-bold text-ink mb-3">Cover letter length</p>
-              <div className="flex flex-wrap items-center gap-2">
-                {LENGTH_PRESETS.map((p) => (
-                  <button
-                    key={p.value}
-                    type="button"
-                    onClick={() => {
-                      setField('coverLetterLength', p.value);
-                      setField('customLength', '');
-                    }}
-                    className={`rf-btn !min-h-9 !px-3.5 !text-xs !rounded-lg ${
-                      !customLength && coverLetterLength === p.value
-                        ? 'rf-btn-primary'
-                        : 'rf-btn-ghost'
-                    }`}
-                  >
-                    {p.label}
-                    <span className="text-[10px] opacity-70">~{p.value}</span>
-                  </button>
-                ))}
-                <label className="flex items-center gap-2 text-sm">
+            {wantsCover && (
+              <div className="rf-gen-section">
+                <p className="rf-gen-section-title">Cover letter length</p>
+                <CompactChoice
+                  aria-label="Cover letter length"
+                  options={lengthOptions}
+                  value={customLength ? '' : String(coverLetterLength)}
+                  onChange={(id) => {
+                    setField('coverLetterLength', Number(id));
+                    setField('customLength', '');
+                  }}
+                />
+                <label className="mt-3 flex items-center gap-2 text-sm">
                   <span className="text-ink-muted font-medium text-xs">Custom:</span>
                   <input
                     type="number"
@@ -632,168 +570,233 @@ export default function GeneratePage() {
                   />
                 </label>
               </div>
+            )}
+          </div>
+        </aside>
+
+        <div className="rf-gen-main">
+          <div className="rf-gen-panel">
+            <form onSubmit={handleGenerate} className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field
+                  label="Job title"
+                  value={jobTitle}
+                  onChange={(e) => setField('jobTitle', e.target.value)}
+                  required
+                  placeholder="Senior Software Engineer"
+                />
+                <Field
+                  label="Company name"
+                  value={companyName}
+                  onChange={(e) => setField('companyName', e.target.value)}
+                  required
+                  placeholder="Acme Corporation"
+                />
+              </div>
+
+              <Field
+                label="Job description"
+                as="textarea"
+                className="min-h-[7rem]"
+                value={jobDescription}
+                onChange={(e) => setField('jobDescription', e.target.value)}
+                required
+                placeholder="Paste the full job description here — the more detail, the better the tailoring…"
+              />
+
+              <div>
+                <Field
+                  label="Special notes (optional — this application only)"
+                  as="textarea"
+                  className="min-h-[4.5rem]"
+                  value={specialNotes}
+                  onChange={(e) => setField('specialNotes', e.target.value.slice(0, 4000))}
+                  maxLength={4000}
+                  placeholder={
+                    'Tell Gemini what to add, emphasize, or leave out for THIS job only.\nExamples:\n• Emphasize React and Node; de-emphasize WordPress\n• Highlight the Tamagn Check project; skip older internships\n• Mention I led the payments migration for 6 months\n• Keep the cover letter shorter and more technical'
+                  }
+                />
+                <p className="mt-1.5 text-xs text-ink-muted leading-relaxed">
+                  Applied only to this generation — does not change your saved profile.
+                  Use it to tailor skills, experience, or tone for one application.
+                  {specialNotes.trim()
+                    ? ` · ${specialNotes.trim().length}/4000`
+                    : ''}
+                </p>
+              </div>
+
+              <div className="pt-1">
+                <Button
+                  type="submit"
+                  variant="accent"
+                  loading={loading}
+                  className="w-full sm:w-auto !min-h-11 !text-sm !px-6"
+                >
+                  {loading ? 'Generating…' : 'Generate application'}
+                </Button>
+              </div>
+            </form>
+          </div>
+
+          {loading && <GenerateSkeleton />}
+
+          {hasResults && (
+            <div ref={resultsRef} className="space-y-4 rf-enter">
+              {resume?.requirement_match ? (
+                <RequirementMatch items={resume.requirement_match} />
+              ) : null}
+
+              <div
+                className={`grid gap-4 ${
+                  bothDocs ? 'xl:grid-cols-2' : 'grid-cols-1'
+                }`}
+              >
+                {resume && (
+                  <section className="rf-gen-panel space-y-3 min-w-0">
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div>
+                        <h2 className="text-base font-bold text-navy">Resume preview</h2>
+                        <p className="text-xs text-ink-muted mt-0.5">
+                          Template:{' '}
+                          <span className="font-medium">
+                            {TEMPLATES.find((t) => t.id === resumeTemplate)?.label ||
+                              resumeTemplate}
+                          </span>
+                          {' · '}
+                          {includeContact ? 'With contact' : 'Upwork-safe'}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {TEMPLATES.map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setField('resumeTemplate', t.id)}
+                            className={`rf-btn !min-h-9 !px-3 !text-xs !rounded-lg ${
+                              resumeTemplate === t.id ? 'rf-btn-primary' : 'rf-btn-ghost'
+                            }`}
+                          >
+                            {t.id === 'color' ? 'Modern' : 'Premium'}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setField('includeContact', !includeContact)}
+                          className={`rf-btn !min-h-9 !px-3 !text-xs !rounded-lg ${
+                            includeContact ? 'rf-btn-secondary' : 'rf-btn-primary'
+                          }`}
+                          title="Toggle contact details for Upwork vs normal applications"
+                        >
+                          {includeContact ? 'With contact' : 'Upwork-safe'}
+                        </button>
+                        <Button
+                          type="button"
+                          variant="accent"
+                          className="!min-h-9 !text-xs !rounded-lg gap-1.5"
+                          onClick={handlePdf}
+                          loading={pdfLoading}
+                          disabled={pdfLoading || !generationId}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          {pdfLoading ? 'Building…' : 'Download PDF'}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="rf-gen-doc-scroll">
+                      <ResumePreview
+                        resume={resume}
+                        profile={profile}
+                        template={resumeTemplate}
+                        includeContact={includeContact}
+                      />
+                    </div>
+                  </section>
+                )}
+
+                {coverLetter && (
+                  <section className="rf-gen-panel space-y-3 min-w-0">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <h2 className="text-base font-bold text-navy">Cover letter</h2>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="!min-h-9 !text-xs !rounded-lg gap-1.5"
+                          onClick={handleDetect}
+                          loading={detecting}
+                          disabled={detecting || !generationId}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+                            <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" />
+                            <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                          </svg>
+                          {detecting ? 'Analyzing…' : 'Check AI'}
+                        </Button>
+                        <Button
+                          type="button"
+                          className="!min-h-9 !text-xs !rounded-lg gap-1.5"
+                          onClick={handleHumanize}
+                          loading={humanizing}
+                          disabled={humanizing || !generationId}
+                        >
+                          {humanizing ? 'Humanizing…' : 'Humanize'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="!min-h-9 !text-xs !rounded-lg gap-1.5"
+                          onClick={copyCoverLetter}
+                        >
+                          {copied ? (
+                            <>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+                                <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+                                <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2" />
+                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2" />
+                              </svg>
+                              Copy
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {wantsCover && targetLength ? (
+                      <CharBar count={charCount} target={targetLength} />
+                    ) : (
+                      <p className="text-xs text-ink-muted">
+                        {charCount.toLocaleString()} characters
+                      </p>
+                    )}
+
+                    {detectionStats && <DetectionCard stats={detectionStats} />}
+                    {humanizeStats && <HumanizeCard stats={humanizeStats} />}
+
+                    <div className="rf-gen-doc-scroll">
+                      <textarea
+                        readOnly
+                        value={coverLetter}
+                        className="rf-input min-h-full w-full leading-relaxed font-sans !min-h-[220px]"
+                      />
+                    </div>
+                    <p className="text-xs text-ink-muted">
+                      Humanize only rewrites the cover letter — your resume PDF is unaffected.
+                    </p>
+                  </section>
+                )}
+              </div>
             </div>
           )}
-
-          {/* Submit */}
-          <div className="pt-1">
-            <Button
-              type="submit"
-              loading={loading}
-              className="w-full sm:w-auto !min-h-12 !text-base !px-8"
-            >
-              {loading ? (
-                <>Generating…</>
-              ) : (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-                  </svg>
-                  Generate application
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
-      </Card>
-
-      {/* ── Loading state ───────────────────────────────────── */}
-      {loading && <GenerateSkeleton />}
-
-      {/* ── Results ─────────────────────────────────────────── */}
-      {hasResults && (
-        <div className="space-y-6 rf-enter">
-          {resume?.requirement_match && (
-            <RequirementMatch items={resume.requirement_match} />
-          )}
-
-          {/* Resume preview */}
-          {resume && (
-            <section className="space-y-4">
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div>
-                  <h2 className="text-xl font-bold text-navy">Resume preview</h2>
-                  <p className="text-xs text-ink-muted mt-0.5">
-                    Template:{' '}
-                    <span className="font-medium">
-                      {TEMPLATES.find((t) => t.id === resumeTemplate)?.label || resumeTemplate}
-                    </span>
-                    {' · '}
-                    {includeContact ? 'With contact' : 'Upwork-safe'}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {TEMPLATES.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setField('resumeTemplate', t.id)}
-                      className={`rf-btn !min-h-9 !px-3 !text-xs !rounded-lg ${
-                        resumeTemplate === t.id ? 'rf-btn-primary' : 'rf-btn-ghost'
-                      }`}
-                    >
-                      {t.id === 'color' ? 'Modern' : 'Premium'}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setField('includeContact', !includeContact)}
-                    className={`rf-btn !min-h-9 !px-3 !text-xs !rounded-lg ${
-                      includeContact ? 'rf-btn-secondary' : 'rf-btn-primary'
-                    }`}
-                    title="Toggle contact details for Upwork vs normal applications"
-                  >
-                    {includeContact ? 'With contact' : 'Upwork-safe'}
-                  </button>
-                  <Button
-                    type="button"
-                    variant="accent"
-                    className="!min-h-9 !text-xs !rounded-lg gap-1.5"
-                    onClick={handlePdf}
-                    loading={pdfLoading}
-                    disabled={pdfLoading || !generationId}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    {pdfLoading ? 'Building…' : 'Download PDF'}
-                  </Button>
-                </div>
-              </div>
-              <ResumePreview
-                resume={resume}
-                profile={profile}
-                template={resumeTemplate}
-                includeContact={includeContact}
-              />
-            </section>
-          )}
-
-          {/* Cover letter */}
-          {coverLetter && (
-            <section className="rf-card p-5 sm:p-6 space-y-4">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <h2 className="text-xl font-bold text-navy">Cover letter</h2>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="!min-h-9 !text-xs !rounded-lg gap-1.5"
-                    onClick={handleDetect}
-                    loading={detecting}
-                    disabled={detecting || !generationId}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-                      <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" />
-                      <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                    {detecting ? 'Analyzing…' : 'Check AI'}
-                  </Button>
-                  <Button
-                    type="button"
-                    className="!min-h-9 !text-xs !rounded-lg gap-1.5"
-                    onClick={handleHumanize}
-                    loading={humanizing}
-                    disabled={humanizing || !generationId}
-                  >
-                    {humanizing ? 'Humanizing…' : 'Humanize'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="!min-h-9 !text-xs !rounded-lg gap-1.5"
-                    onClick={copyCoverLetter}
-                  >
-                    {copied ? (
-                      <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>Copied!</>
-                    ) : (
-                      <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden><rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2" /></svg>Copy</>
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {wantsCover && targetLength ? (
-                <CharBar count={charCount} target={targetLength} />
-              ) : (
-                <p className="text-xs text-ink-muted">{charCount.toLocaleString()} characters</p>
-              )}
-
-              {detectionStats && <DetectionCard stats={detectionStats} />}
-              {humanizeStats && <HumanizeCard stats={humanizeStats} />}
-
-              <textarea
-                readOnly
-                value={coverLetter}
-                className="rf-input min-h-[260px] leading-relaxed font-sans"
-              />
-              <p className="text-xs text-ink-muted">
-                💡 Humanize only rewrites the cover letter — your resume PDF is unaffected.
-              </p>
-            </section>
-          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
