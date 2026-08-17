@@ -5,32 +5,15 @@ import { generateApplication, isPlaceholderGeminiKey } from '../services/gemini.
 import { generateResumePdf } from '../services/pdf.js';
 import { humanizeCoverLetter } from '../services/humanizer/index.js';
 import { detectText } from '../services/detector/predict.js';
-import { generateLimiter } from '../middleware/rateLimit.js';
+import {
+  generateLimiter,
+  humanizeLimiter,
+  detectLimiter,
+} from '../middleware/rateLimit.js';
 import { requireAuth } from '../middleware/auth.js';
-import rateLimit from 'express-rate-limit';
 
 const router = Router();
 router.use(requireAuth);
-
-const humanizeLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    error: 'Rate limit exceeded. Maximum 30 humanize calls per hour.',
-  },
-});
-
-const detectLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 60,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    error: 'Rate limit exceeded. Maximum 60 detect calls per hour.',
-  },
-});
 
 const MAX_JOB_DESCRIPTION = 20000;
 const OUTPUT_MODES = new Set(['both', 'resume', 'cover_letter']);

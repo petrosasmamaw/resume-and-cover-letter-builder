@@ -4,6 +4,7 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import authRoutes from './routes/auth.js';
 import profileRoutes from './routes/profile.js';
 import generateRoutes from './routes/generate.js';
@@ -19,6 +20,26 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
+
+// Trust reverse proxies (Render, Vercel, Heroku, Nginx) so client IP rate-limiting functions
+app.set('trust proxy', 1);
+
+// Security headers
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+        connectSrc: ["'self'", '*'],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
 const allowedOrigins = (process.env.CLIENT_ORIGIN || '')
   .split(',')

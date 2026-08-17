@@ -81,16 +81,27 @@ export default function LoginPage() {
               autoComplete="email"
               placeholder="you@example.com"
             />
-            <Field
-              label="Password"
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              placeholder="Your password"
-            />
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-ink">Password</label>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-accent-dim hover:text-accent hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <input
+                type="password"
+                required
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                placeholder="Your password"
+                className="rf-input"
+              />
+            </div>
             <Button
               type="submit"
               variant="accent"

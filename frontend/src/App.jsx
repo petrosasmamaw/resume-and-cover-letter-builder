@@ -9,6 +9,9 @@ import FAQPage from './pages/FAQPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import SignupPage from './pages/SignupPage.jsx';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import Footer from './components/Footer.jsx';
 import {
   BrandMark,
@@ -235,6 +238,8 @@ function Shell() {
           <Route path="/faq" element={<FAQPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route
             path="/profile"
             element={
@@ -354,8 +359,10 @@ function Shell() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Shell />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Shell />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

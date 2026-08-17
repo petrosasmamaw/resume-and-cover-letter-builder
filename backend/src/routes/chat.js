@@ -1,22 +1,12 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
 import { requireAuth } from '../middleware/auth.js';
+import { chatLimiter } from '../middleware/rateLimit.js';
 import { query } from '../db/pool.js';
 import { chatCareerCoach, isPlaceholderGeminiKey } from '../services/gemini.js';
 import { getFullProfile } from './profile.js';
 
 const router = Router();
 router.use(requireAuth);
-
-const chatLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 60,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    error: 'Rate limit exceeded. Maximum 60 chat messages per hour.',
-  },
-});
 
 const MAX_MESSAGE = 12000;
 const MAX_HISTORY = 20;

@@ -102,10 +102,17 @@ CREATE INDEX IF NOT EXISTS idx_skills_profile ON skills(profile_id);
 CREATE INDEX IF NOT EXISTS idx_experience_profile ON experience(profile_id);
 CREATE INDEX IF NOT EXISTS idx_projects_profile ON projects(profile_id);
 CREATE INDEX IF NOT EXISTS idx_education_profile ON education(profile_id);
-CREATE INDEX IF NOT EXISTS idx_certifications_profile ON certifications(profile_id);
-CREATE INDEX IF NOT EXISTS idx_generations_profile ON generations(profile_id);
-CREATE INDEX IF NOT EXISTS idx_generations_user ON generations(user_id);
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_password_reset_hash ON password_reset_tokens(token_hash);
 
 -- Remove pre-auth orphan rows so every profile belongs to a user
 DELETE FROM profiles WHERE user_id IS NULL;

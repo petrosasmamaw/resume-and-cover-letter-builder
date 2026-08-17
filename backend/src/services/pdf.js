@@ -62,7 +62,45 @@ async function launchBrowser() {
   });
 }
 
+// Concurrency queue to protect memory (starter cloud tiers have 512MB RAM)
+const MAX_CONCURRENT_PDF_JOBS = Number(process.env.MAX_PDF_CONCURRENCY) || 2;
+let activePdfJobs = 0;
+const pdfQueue = [];
+
+function acquirePdfSlot() {
+  if (activePdfJobs < MAX_CONCURRENT_PDF_JOBS) {
+    activePdfJobs++;
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    pdfQueue.push(resolve);
+  });
+}
+
+function releasePdfSlot() {
+  activePdfJobs--;
+  if (pdfQueue.length > 0) {
+    activePdfJobs++;
+    const next = pdfQueue.shift();
+    next();
+  }
+}
+
 export async function generateResumePdf(
+  resume,
+  profile,
+  template = 'color',
+  options = {}
+) {
+  await acquirePdfSlot();
+  try {
+    return await executePdfRender(resume, profile, template, options);
+  } finally {
+    releasePdfSlot();
+  }
+}
+
+async function executePdfRender(
   resume,
   profile,
   template = 'color',
