@@ -1,10 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { isPlaceholderGeminiKey } from '../gemini.js';
+import { isPlaceholderGeminiKey, generateWithModelFallback } from '../gemini.js';
 import { splitSentences } from './sentenceSplitter.js';
 import { findAiPhrases } from './aiPatternDetector.js';
-
-const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-pro-preview';
-const FALLBACK_MODEL = 'gemini-flash-latest';
 
 /**
  * LLM-assisted rewrite — preserves meaning, varies rhythm, removes AI tells.
@@ -52,35 +49,4 @@ ${text}
     throw new Error('Rewrite engine returned empty text.');
   }
   return out;
-}
-
-function shouldFallbackModel(error) {
-  const msg = String(error?.message || '');
-  return (
-    msg.includes('[429') ||
-    msg.toLowerCase().includes('quota exceeded') ||
-    msg.toLowerCase().includes('not found') ||
-    msg.toLowerCase().includes('no longer available')
-  );
-}
-
-async function generateWithModelFallback(genAI, { systemInstruction, prompt }) {
-  const primary = genAI.getGenerativeModel({
-    model: PRIMARY_MODEL,
-    systemInstruction,
-  });
-  try {
-    const result = await primary.generateContent(prompt);
-    return result.response.text();
-  } catch (error) {
-    if (!shouldFallbackModel(error) || PRIMARY_MODEL === FALLBACK_MODEL) {
-      throw error;
-    }
-    const fallback = genAI.getGenerativeModel({
-      model: FALLBACK_MODEL,
-      systemInstruction,
-    });
-    const result = await fallback.generateContent(prompt);
-    return result.response.text();
-  }
 }

@@ -2,12 +2,90 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const PLACEHOLDER_KEY = 'demo_gemini_key_replace_me';
 
-const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-pro-preview';
-const FALLBACK_MODEL = 'gemini-flash-latest';
+const CANDIDATE_MODELS = [
+  process.env.GEMINI_MODEL,
+  'gemini-3.6-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.5-flash',
+  'gemini-flash-lite-latest',
+].filter(Boolean);
+
+export const MODEL_WATERFALL = [...new Set(CANDIDATE_MODELS)];
+
+const CHAT_CANDIDATES = [
+  process.env.GEMINI_CHAT_MODEL,
+  'gemini-3.5-flash-lite',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash',
+  'gemini-flash-lite-latest',
+].filter(Boolean);
+
+export const CHAT_WATERFALL = [...new Set(CHAT_CANDIDATES)];
 
 export function isPlaceholderGeminiKey() {
   const key = process.env.GEMINI_API_KEY;
   return !key || key === PLACEHOLDER_KEY;
+}
+
+export function isRetryableError(error) {
+  const msg = String(error?.message || '').toLowerCase();
+  const status = error?.status;
+  return (
+    status === 503 ||
+    status === 429 ||
+    status === 500 ||
+    status === 404 ||
+    msg.includes('503') ||
+    msg.includes('429') ||
+    msg.includes('500') ||
+    msg.includes('404') ||
+    msg.includes('high demand') ||
+    msg.includes('spikes in demand') ||
+    msg.includes('service unavailable') ||
+    msg.includes('overloaded') ||
+    msg.includes('temporarily unavailable') ||
+    msg.includes('quota exceeded') ||
+    msg.includes('rate limit') ||
+    msg.includes('resource exhausted') ||
+    msg.includes('not found') ||
+    msg.includes('no longer available') ||
+    msg.includes('is not supported')
+  );
+}
+
+export async function generateWithModelFallback(
+  genAI,
+  { systemInstruction, prompt, generationConfig = {} }
+) {
+  let lastError = null;
+
+  for (const modelName of MODEL_WATERFALL) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction,
+        generationConfig,
+      });
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      if (text && text.trim()) {
+        return text;
+      }
+    } catch (error) {
+      lastError = error;
+      console.warn(
+        `[Gemini] Model ${modelName} failed (${error?.message?.slice(0, 120)}...). Trying next model in waterfall...`
+      );
+      if (
+        error?.message?.includes('API_KEY_INVALID') ||
+        error?.message?.includes('API key not valid')
+      ) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError || new Error('All Gemini models in fallback cascade failed.');
 }
 
 export async function generateApplication({
@@ -137,6 +215,9 @@ ${outputShape}`;
   const text = await generateWithModelFallback(genAI, {
     systemInstruction,
     prompt,
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
   });
   return parseJsonResponse(text);
 }
@@ -226,43 +307,12 @@ ${rawText}
   const text = await generateWithModelFallback(genAI, {
     systemInstruction,
     prompt,
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
   });
   return parseJsonResponse(text);
 }
-
-function shouldFallbackModel(error) {
-  const msg = String(error?.message || '');
-  return (
-    msg.includes('[429') ||
-    msg.toLowerCase().includes('quota exceeded') ||
-    msg.toLowerCase().includes('not found') ||
-    msg.toLowerCase().includes('no longer available')
-  );
-}
-
-async function generateWithModelFallback(genAI, { systemInstruction, prompt }) {
-  const primary = genAI.getGenerativeModel({
-    model: PRIMARY_MODEL,
-    systemInstruction,
-  });
-  try {
-    const result = await primary.generateContent(prompt);
-    return result.response.text();
-  } catch (error) {
-    if (!shouldFallbackModel(error) || PRIMARY_MODEL === FALLBACK_MODEL) {
-      throw error;
-    }
-    const fallback = genAI.getGenerativeModel({
-      model: FALLBACK_MODEL,
-      systemInstruction,
-    });
-    const result = await fallback.generateContent(prompt);
-    return result.response.text();
-  }
-}
-
-const CHAT_FAST_MODEL = process.env.GEMINI_CHAT_MODEL || FALLBACK_MODEL;
-const CHAT_DEEP_MODEL = process.env.GEMINI_CHAT_FALLBACK_MODEL || PRIMARY_MODEL;
 
 const RESUMEFORGE_PRODUCT_GUIDE = `RESUMEFORGE PRODUCT KNOWLEDGE (use when user asks how the app works or wants generate helpers):
 
@@ -362,7 +412,7 @@ Education: ${(slim.education || [])
 }
 
 /**
- * Dual-mode ResumeForge + profile-grounded application coach (Flash, Pro fallback).
+ * Dual-mode ResumeForge + profile-grounded application coach.
  * messages: [{ role: 'user' | 'assistant', content: string }] — last must be user.
  */
 export async function chatCareerCoach({
@@ -522,56 +572,66 @@ async function chatWithModelFallback(genAI, { systemInstruction, history, messag
     maxOutputTokens: 8192,
   };
 
-  async function run(modelName) {
-    const model = genAI.getGenerativeModel({
-      model: modelName,
-      systemInstruction,
-      generationConfig,
-    });
-    const chat = model.startChat({ history });
-    const result = await chat.sendMessage(message);
-    const response = result.response;
-    let text = '';
+  let lastError = null;
+
+  for (const modelName of CHAT_WATERFALL) {
     try {
-      text = response.text();
-    } catch {
-      text = response.candidates?.[0]?.content?.parts
-        ?.map((p) => p.text || '')
-        .join('') || '';
-    }
-
-    const finish = String(
-      response.candidates?.[0]?.finishReason || ''
-    ).toUpperCase();
-
-    // If Gemini hit the output cap mid-reply, ask once to continue from the cut-off
-    if (
-      text &&
-      (finish === 'MAX_TOKENS' || finish === 'LENGTH') &&
-      !/[.!?)"']\s*$/.test(text.trim())
-    ) {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction,
+        generationConfig,
+      });
+      const chat = model.startChat({ history });
+      const result = await chat.sendMessage(message);
+      const response = result.response;
+      let text = '';
       try {
-        const cont = await chat.sendMessage(
-          'Continue the previous answer from exactly where it stopped. Plain text only — no Markdown (no #, **, ---, backticks). Finish every remaining question completely.'
-        );
-        const more = cont.response.text();
-        if (more?.trim()) {
-          text = `${text.trimEnd()}\n${more.trim()}`;
-        }
+        text = response.text();
       } catch {
-        // keep truncated text if continuation fails
+        text = response.candidates?.[0]?.content?.parts
+          ?.map((p) => p.text || '')
+          .join('') || '';
+      }
+
+      const finish = String(
+        response.candidates?.[0]?.finishReason || ''
+      ).toUpperCase();
+
+      // If Gemini hit the output cap mid-reply, ask once to continue from the cut-off
+      if (
+        text &&
+        (finish === 'MAX_TOKENS' || finish === 'LENGTH') &&
+        !/[.!?)"']\s*$/.test(text.trim())
+      ) {
+        try {
+          const cont = await chat.sendMessage(
+            'Continue the previous answer from exactly where it stopped. Plain text only — no Markdown (no #, **, ---, backticks). Finish every remaining question completely.'
+          );
+          const more = cont.response.text();
+          if (more?.trim()) {
+            text = `${text.trimEnd()}\n${more.trim()}`;
+          }
+        } catch {
+          // keep truncated text if continuation fails
+        }
+      }
+
+      if (text && text.trim()) {
+        return text;
+      }
+    } catch (error) {
+      lastError = error;
+      console.warn(
+        `[Gemini Chat] Model ${modelName} failed (${error?.message?.slice(0, 120)}...). Trying next model in waterfall...`
+      );
+      if (
+        error?.message?.includes('API_KEY_INVALID') ||
+        error?.message?.includes('API key not valid')
+      ) {
+        throw error;
       }
     }
-
-    return text;
   }
 
-  try {
-    return await run(CHAT_FAST_MODEL);
-  } catch (error) {
-    if (!shouldFallbackModel(error) || CHAT_FAST_MODEL === CHAT_DEEP_MODEL) {
-      throw error;
-    }
-    return run(CHAT_DEEP_MODEL);
-  }
+  throw lastError || new Error('All Gemini chat models in fallback cascade failed.');
 }
